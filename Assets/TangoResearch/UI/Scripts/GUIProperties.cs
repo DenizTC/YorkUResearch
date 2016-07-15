@@ -5,6 +5,7 @@ public class GUIProperties : MonoBehaviour {
 
     //private Enums.SelectionType _curSelectionType = Enums.SelectionType.NONE;
 
+    public GUIARAmbientLight _PanelARAmbientLight;
     public GUIARDirectionalLight _PanelARDirectionalLight;
     public GUIARPointLight _PanelARPointLight;
     public GUIARProp _PanelProp;

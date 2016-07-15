@@ -10,6 +10,7 @@ public class GUISideBar : MonoBehaviour {
     public Toggle _WireframeToggle;
     public Toggle _EnvShadowToggle;
     public Button _SunSettingsButton;
+    public Button _AmbientSettingsButton;
     public GUIARDirectionalLight _SunController;
     public Renderer _DynamicMesh;
 
@@ -22,6 +23,7 @@ public class GUISideBar : MonoBehaviour {
 
     void Start() {
         _SunSettingsButton.onClick.AddListener(onSunClick);
+        _AmbientSettingsButton.onClick.AddListener(onAmbientClick);
         _WireframeToggle.onValueChanged.AddListener(onWireframeToggled);
         _EnvShadowToggle.onValueChanged.AddListener(onEnvShadowToggled);
 
@@ -33,6 +35,12 @@ public class GUISideBar : MonoBehaviour {
         GameGlobals.ChangeSelected(Enums.SelectionType.DIRECTIONAL_LIGHT);
         GameGlobals.SetPropertiesOpen(true);
         ARDirectionalLight._Sun.MakeSelected();
+    }
+
+    private void onAmbientClick() {
+        GameGlobals.ChangeSelected(Enums.SelectionType.AMBIENT_LIGHT);
+        GameGlobals.SetPropertiesOpen(true);
+        ARAmbientLight._SceneAmbientLight.MakeSelected();
     }
 
     private void onWireframeToggled(bool value) {

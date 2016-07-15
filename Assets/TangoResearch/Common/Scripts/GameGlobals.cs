@@ -31,22 +31,32 @@ public static class GameGlobals {
     }
 
     public static void ChangeSelected(Enums.SelectionType selection) {
-        if(selection != Enums.SelectionType.DIRECTIONAL_LIGHT)
+        if(selection != Enums.SelectionType.DIRECTIONAL_LIGHT ||
+            selection != Enums.SelectionType.AMBIENT_LIGHT)
             CurrentSelection = selection;
 
         switch (selection)
         {
             case Enums.SelectionType.POINT_LIGHT:
+                _properties._PanelARAmbientLight.gameObject.SetActive(false);
                 _properties._PanelARDirectionalLight.gameObject.SetActive(false);
                 _properties._PanelARPointLight.gameObject.SetActive(true);
                 _properties._PanelProp.gameObject.SetActive(false);
                 break;
             case Enums.SelectionType.DIRECTIONAL_LIGHT:
+                _properties._PanelARAmbientLight.gameObject.SetActive(false);
                 _properties._PanelARDirectionalLight.gameObject.SetActive(true);
                 _properties._PanelARPointLight.gameObject.SetActive(false);
                 _properties._PanelProp.gameObject.SetActive(false);
                 break;
+            case Enums.SelectionType.AMBIENT_LIGHT:
+                _properties._PanelARAmbientLight.gameObject.SetActive(true);
+                _properties._PanelARDirectionalLight.gameObject.SetActive(false);
+                _properties._PanelARPointLight.gameObject.SetActive(false);
+                _properties._PanelProp.gameObject.SetActive(false);
+                break;
             case Enums.SelectionType.PROP:
+                _properties._PanelARAmbientLight.gameObject.SetActive(false);
                 _properties._PanelARDirectionalLight.gameObject.SetActive(false);
                 _properties._PanelARPointLight.gameObject.SetActive(false);
                 _properties._PanelProp.gameObject.SetActive(true);
