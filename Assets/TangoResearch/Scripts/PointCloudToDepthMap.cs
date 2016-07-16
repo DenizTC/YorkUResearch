@@ -34,7 +34,7 @@ public class PointCloudToDepthMap : MonoBehaviour, ITangoLifecycle, ITangoDepth
         _depthMapDirty = new bool[_depthMapWidth + 1, _depthMapHeight + 1];
         if(_depthTexture == null)
             _depthTexture = new Texture2D(_depthMapWidth, _depthMapHeight, TextureFormat.ARGB32, false);
-        //_depthTexture.filterMode = FilterMode.Point;
+        _depthTexture.filterMode = FilterMode.Point;
 
     }
 
