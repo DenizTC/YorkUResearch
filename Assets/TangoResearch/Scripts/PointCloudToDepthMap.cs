@@ -18,6 +18,7 @@ public class PointCloudToDepthMap : MonoBehaviour, ITangoLifecycle, ITangoDepth
     public int _depthMapWidth = 8;
     public int _depthMapHeight = 8;
     public Texture2D _depthTexture;
+    public int _DirtyRadius = 4;
 
     private float[,] _depthMap;
     private bool[,] _depthMapDirty;
@@ -33,8 +34,8 @@ public class PointCloudToDepthMap : MonoBehaviour, ITangoLifecycle, ITangoDepth
         _depthMap = new float[_depthMapWidth + 1, _depthMapHeight + 1];
         _depthMapDirty = new bool[_depthMapWidth + 1, _depthMapHeight + 1];
         if(_depthTexture == null)
-            _depthTexture = new Texture2D(_depthMapWidth, _depthMapHeight, TextureFormat.ARGB32, false);
-        _depthTexture.filterMode = FilterMode.Point;
+            _depthTexture = new Texture2D(_depthMapWidth, _depthMapHeight, TextureFormat.RGB24, false);
+        //_depthTexture.filterMode = FilterMode.Point;
 
     }
 
@@ -46,10 +47,21 @@ public class PointCloudToDepthMap : MonoBehaviour, ITangoLifecycle, ITangoDepth
         }
     }
 
+    public void ChangeDepthMapResolution(int width, int height) {
+        _depthMapWidth = width;
+        _depthMapHeight = height;
+
+        _depthMap = new float[_depthMapWidth + 1, _depthMapHeight + 1];
+        _depthMapDirty = new bool[_depthMapWidth + 1, _depthMapHeight + 1];
+        _depthTexture = new Texture2D(_depthMapWidth, _depthMapHeight, TextureFormat.RGB24, false);
+    }
+
     private void GenerateDepthMap(ref TangoUnityDepth tangoUnityDepth)
     {
         float dW = _depthMapWidth / 1280f;
         float dH = _depthMapHeight / 720f;
+
+        
 
         for (int i = 0; i < tangoUnityDepth.m_pointCount; i++)
         {
@@ -69,19 +81,92 @@ public class PointCloudToDepthMap : MonoBehaviour, ITangoLifecycle, ITangoDepth
             _depthMap[x, y] = Z;
             _depthMapDirty[x, y] = true;
         }
-
+        Color lastFound = new Color();
         for (int i = 0; i < _depthMapWidth; i++)
         {
             for (int j = 0; j < _depthMapHeight; j++)
             {
                 if (_depthMapDirty[i, j])
                 {
-                    _depthTexture.SetPixel(i, _depthMapHeight - j,
-                        new Color(_depthMap[i, j], _depthMap[i, j], _depthMap[i, j]));
+                    lastFound = new Color(_depthMap[i, j], _depthMap[i, j], _depthMap[i, j]);
+                    _depthTexture.SetPixel(i, _depthMapHeight - j, lastFound);
                 }
                 else
                 {
-                    _depthTexture.SetPixel(i, _depthMapHeight - j, Color.black);
+
+                    if (i >= _depthMapWidth - _DirtyRadius - 1 ||
+                        j >= _depthMapHeight - _DirtyRadius - 1 ||
+                        i < _DirtyRadius ||
+                        j < _DirtyRadius ||
+                        _DirtyRadius == 0)
+                    {
+                        _depthTexture.SetPixel(i, _depthMapHeight - j, Color.black);
+                        continue;
+                    }
+
+                    bool notDirty = true;
+                    for (int w = 1; w <= _DirtyRadius; w++)
+                    {
+
+                        for (int h = 1; h <= _DirtyRadius; h++)
+                        {
+                            notDirty &=
+                            !_depthMapDirty[i + w, j + h] &&
+                            !_depthMapDirty[i + w, j - h] &&
+                            !_depthMapDirty[i, j + h] &&
+                            !_depthMapDirty[i + w, j];
+
+                            if (notDirty)
+                            {
+                                _depthTexture.SetPixel(i, _depthMapHeight - j, Color.black);
+                                continue;
+                            }
+                        }
+                        if (notDirty) continue;
+                    }
+                    if (notDirty) continue;
+
+                    //if (!_depthMapDirty[i + _DirtyRadius, j + _DirtyRadius] &&
+                    //    //!_depthMapDirty[i + 5, j + 5] &&
+                    //    //!_depthMapDirty[i + 4, j + 4] &&
+                    //    //!_depthMapDirty[i + 3, j + 3] &&
+                    //    //!_depthMapDirty[i + 2, j + 2] &&
+                    //    !_depthMapDirty[i + 1, j + 1] &&
+
+                    //    !_depthMapDirty[i + _DirtyRadius, j - _DirtyRadius] &&
+                    //    //!_depthMapDirty[i + 5, j - 5] &&
+                    //    //!_depthMapDirty[i + 4, j - 4] &&
+                    //    //!_depthMapDirty[i + 3, j - 3] &&
+                    //    //!_depthMapDirty[i + 2, j - 2] &&
+                    //    !_depthMapDirty[i + 1, j - 1] &&
+
+                    //    !_depthMapDirty[i, j + _DirtyRadius] &&
+                    //    //!_depthMapDirty[i, j + 5] &&
+                    //    //!_depthMapDirty[i, j + 4] &&
+                    //    //!_depthMapDirty[i, j + 3] &&
+                    //    //!_depthMapDirty[i, j + 2] &&
+                    //    !_depthMapDirty[i, j + 1] &&
+
+                    //    !_depthMapDirty[i + _DirtyRadius, j] &&
+                    //    //!_depthMapDirty[i + 5, j] &&
+                    //    //!_depthMapDirty[i + 4, j] &&
+                    //    //!_depthMapDirty[i + 3, j] &&
+                    //    //!_depthMapDirty[i + 2, j] &&
+                    //    !_depthMapDirty[i + 1, j]
+
+                    //    )
+                    //{
+                    //    _depthTexture.SetPixel(i, _depthMapHeight - j, Color.black);
+                    //    continue;
+                    //}
+
+                    Color upRight = _depthTexture.GetPixel(i - 1, _depthMapHeight - j - 1);
+                    Color downLeft = _depthTexture.GetPixel(i + 1, _depthMapHeight - j + 1);
+                    Color upLeft = _depthTexture.GetPixel(i - 1, _depthMapHeight - j + 1);
+                    Color downRight = _depthTexture.GetPixel(i + 1, _depthMapHeight - j - 1);
+
+                    Color ave = (upRight + downLeft + upLeft + downRight) / 4.0f;
+                    _depthTexture.SetPixel(i, _depthMapHeight - j, ave);
                 }
                 _depthMapDirty[i, j] = false;
             }

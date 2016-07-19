@@ -6,7 +6,9 @@
 		_RGBReal ("RGB (Real)", 2D) = "white" {}
 		//_DepthVirtual ("Depth Map (Virtual)", 2D) = "white" {}
 		_DepthReal ("Depth Map (Real)", 2D) = "white" {}
+		_EdgeBias("Edge Bias", Float) = 0.2
 		[MaterialToggle] _RGBMode("RGB Mode", Float) = 1
+		
 	}
 	SubShader
 	{
@@ -46,8 +48,10 @@
 			//sampler2D _DepthVirtual;
 			uniform sampler2D _LastCameraDepthTexture;
 			sampler2D _DepthReal;
-			uniform int sizeNear = 2;
 			uniform float _RGBMode;
+			uniform float _DepthWidth;
+			uniform float _DepthHeight;
+			uniform float _EdgeBias;
 
 			fixed4 frag (v2f i) : SV_Target
 			{
@@ -56,31 +60,13 @@
 				float rDepth = tex2D(_DepthReal, i.uv);
 				float vDepth = UNITY_SAMPLE_DEPTH(tex2D(_LastCameraDepthTexture, i.uv));
 				vDepth = 1 - pow(Linear01Depth(vDepth), 0.5);
-				
-				float4 v = lerp(vDepth, vRGB, _RGBMode);
-				
-				if (rDepth < 0.005) 
-				{
-					//bool neighborFound = false;
-					for (int r = 0; r < 2; r++) 
-					{
-						for (int c = 0; c < 2; c++) 
-						{
-							float newDepth = tex2D(_DepthReal, i.uv + (float2(r/ 160.0, c/ 90.0)) );
-							if (newDepth > rDepth) 
-							{
-								rDepth = newDepth;
-
-								// Break doesn't work on android. Must return here.
-								float4 bg = lerp(rDepth, rRGB, _RGBMode);
-								return (vDepth > rDepth) ? v : bg;
-							}
-						} // For each neighbor (col)
-					} // For each neighbor (row)
-				} // Finding neighbor
 
 				float4 bg = lerp(rDepth, rRGB, _RGBMode);
-				return (vDepth > rDepth) ? v : bg;
+				float diff = abs(vDepth - rDepth);
+				if (diff < _EdgeBias/10) {
+					vRGB = lerp(bg, vRGB, diff / (_EdgeBias / 10));
+				}
+				return (vDepth > rDepth) ? vRGB : bg;
 
 			}
 			ENDCG

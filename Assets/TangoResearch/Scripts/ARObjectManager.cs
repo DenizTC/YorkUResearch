@@ -26,35 +26,6 @@ using UnityEngine.UI;
 
 public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
 {
-    // Constant value for controlling the position and size of debug overlay.
-    public const float UI_LABEL_START_X = 15.0f;
-    public const float UI_LABEL_START_Y = 15.0f;
-    public const float UI_LABEL_SIZE_X = 1920.0f;
-    public const float UI_LABEL_SIZE_Y = 35.0f;
-    public const float UI_LABEL_GAP_Y = 3.0f;
-    public const float UI_BUTTON_SIZE_X = 250.0f;
-    public const float UI_BUTTON_SIZE_Y = 130.0f;
-    public const float UI_BUTTON_GAP_X = 5.0f;
-    public const float UI_CAMERA_BUTTON_OFFSET = UI_BUTTON_SIZE_X + UI_BUTTON_GAP_X;
-    public const float UI_LABEL_OFFSET = UI_LABEL_GAP_Y + UI_LABEL_SIZE_Y;
-    public const float UI_FPS_LABEL_START_Y = UI_LABEL_START_Y + UI_LABEL_OFFSET;
-    public const float UI_EVENT_LABEL_START_Y = UI_FPS_LABEL_START_Y + UI_LABEL_OFFSET;
-    public const float UI_POSE_LABEL_START_Y = UI_EVENT_LABEL_START_Y + UI_LABEL_OFFSET;
-    public const float UI_DEPTH_LABLE_START_Y = UI_POSE_LABEL_START_Y + UI_LABEL_OFFSET;
-    public const string UI_FLOAT_FORMAT = "F3";
-    public const string UI_FONT_SIZE = "<size=25>";
-
-    public const float UI_TANGO_VERSION_X = UI_LABEL_START_X;
-    public const float UI_TANGO_VERSION_Y = UI_LABEL_START_Y;
-    public const float UI_TANGO_APP_SPECIFIC_START_X = UI_TANGO_VERSION_X;
-    public const float UI_TANGO_APP_SPECIFIC_START_Y = UI_TANGO_VERSION_Y + (UI_LABEL_OFFSET * 2);
-
-    public const string UX_SERVICE_VERSION = "Service version: {0}";
-    public const string UX_TANGO_SERVICE_VERSION = "Tango service version: {0}";
-    public const string UX_TANGO_SYSTEM_EVENT = "Tango system event: {0}";
-    public const string UX_TARGET_TO_BASE_FRAME = "Target->{0}, Base->{1}:";
-    public const string UX_STATUS = "\tstatus: {0}, count: {1}, position (m): [{2}], orientation: [{3}]";
-    public const float SECOND_TO_MILLISECOND = 1000.0f;
 
     private float forwardVelocity = 5.0f;
     public ARSelectable[] _Selectables;
@@ -100,11 +71,6 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
     /// </summary>
     private Rect m_selectedRect;
 
-    /// <summary>
-    /// If set, this is the rectangle for the Hide All button.
-    /// </summary>
-    private Rect m_hideAllRect;
-
     public void Start()
     {
         m_tangoApplication = FindObjectOfType<TangoApplication>();
@@ -130,56 +96,6 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
     {
         _UpdateLocationMarker();
     }
-
-    public void OnGUI()
-    {
-        //if (m_selectedPrefab != null)
-        //{
-        //    Debug.Log("Selected!");
-        //    Renderer selectedRenderer = m_selectedPrefab._Gizmo;
-
-        //    // GUI's Y is flipped from the mouse's Y
-        //    Rect screenRect = WorldBoundsToScreen(Camera.main, selectedRenderer.bounds);
-        //    float yMin = Screen.height - screenRect.yMin;
-        //    float yMax = Screen.height - screenRect.yMax;
-        //    screenRect.yMin = Mathf.Min(yMin, yMax);
-        //    screenRect.yMax = Mathf.Max(yMin, yMax);
-
-        //    if (GUI.Button(screenRect, "<size=30>Destroy</size>"))
-        //    {
-        //        m_selectedPrefab.SendMessage("Remove");
-        //        m_selectedPrefab = null;
-        //        m_selectedRect = new Rect();
-        //    }
-        //    else
-        //    {
-        //        m_selectedRect = screenRect;
-        //    }
-        //}
-        //else
-        //{
-        //    m_selectedRect = new Rect();
-        //}
-
-        //if (GameObject.FindObjectOfType<PrefabObject>() != null)
-        //{
-        //    m_hideAllRect = new Rect(Screen.width - UI_BUTTON_SIZE_X - UI_BUTTON_GAP_X,
-        //                             Screen.height - UI_BUTTON_SIZE_Y - UI_BUTTON_GAP_X,
-        //                             UI_BUTTON_SIZE_X,
-        //                             UI_BUTTON_SIZE_Y);
-        //    if (GUI.Button(m_hideAllRect, "<size=30>Destroy All</size>"))
-        //    {
-        //        foreach (PrefabObject marker in GameObject.FindObjectsOfType<PrefabObject>())
-        //        {
-        //            marker.SendMessage("Remove");
-        //        }
-        //    }
-        //}
-        //else
-        //{
-        //    m_hideAllRect = new Rect(0, 0, 0, 0);
-        //}
-    }
     
     public void OnTangoPermissions(bool permissionsGranted)
     {
@@ -190,7 +106,6 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
         m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
     }
     
-
     public void OnTangoServiceDisconnected()
     {
     }
@@ -223,111 +138,6 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
         screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, -extents.y, +extents.z)));
         screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, -extents.y, -extents.z)));
         return Rect.MinMaxRect(screenBounds.min.x, screenBounds.min.y, screenBounds.max.x, screenBounds.max.y);
-    }
-
-    /// <summary>
-    /// Construct readable string from TangoPoseStatusType.
-    /// </summary>
-    /// <param name="status">Pose status from Tango.</param>
-    /// <returns>Readable string corresponding to status.</returns>
-    private string _GetLoggingStringFromPoseStatus(TangoEnums.TangoPoseStatusType status)
-    {
-        string statusString;
-        switch (status)
-        {
-        case TangoEnums.TangoPoseStatusType.TANGO_POSE_INITIALIZING:
-            statusString = "initializing";
-            break;
-        case TangoEnums.TangoPoseStatusType.TANGO_POSE_INVALID:
-            statusString = "invalid";
-            break;
-        case TangoEnums.TangoPoseStatusType.TANGO_POSE_UNKNOWN:
-            statusString = "unknown";
-            break;
-        case TangoEnums.TangoPoseStatusType.TANGO_POSE_VALID:
-            statusString = "valid";
-            break;
-        default:
-            statusString = "N/A";
-            break;
-        }
-
-        return statusString;
-    }
-
-    /// <summary>
-    /// Reformat string from vector3 type for data logging.
-    /// </summary>
-    /// <param name="vec">Position to display.</param>
-    /// <returns>Readable string corresponding to vec.</returns>
-    private string _GetLoggingStringFromVec3(Vector3 vec)
-    {
-        if (vec == Vector3.zero)
-        {
-            return "N/A";
-        }
-        else
-        {
-            return string.Format("{0}, {1}, {2}",
-                                 vec.x.ToString(UI_FLOAT_FORMAT),
-                                 vec.y.ToString(UI_FLOAT_FORMAT),
-                                 vec.z.ToString(UI_FLOAT_FORMAT));
-        }
-    }
-
-    /// <summary>
-    /// Reformat string from quaternion type for data logging.
-    /// </summary>
-    /// <param name="quat">Quaternion to display.</param>
-    /// <returns>Readable string corresponding to quat.</returns>
-    private string _GetLoggingStringFromQuaternion(Quaternion quat)
-    {
-        if (quat == Quaternion.identity)
-        {
-            return "N/A";
-        }
-        else
-        {
-            return string.Format("{0}, {1}, {2}, {3}",
-                                 quat.x.ToString(UI_FLOAT_FORMAT),
-                                 quat.y.ToString(UI_FLOAT_FORMAT),
-                                 quat.z.ToString(UI_FLOAT_FORMAT),
-                                 quat.w.ToString(UI_FLOAT_FORMAT));
-        }
-    }
-
-    /// <summary>
-    /// Return a string to the get logging from frame count.
-    /// </summary>
-    /// <returns>The get logging string from frame count.</returns>
-    /// <param name="frameCount">Frame count.</param>
-    private string _GetLoggingStringFromFrameCount(int frameCount)
-    {
-        if (frameCount == -1.0)
-        {
-            return "N/A";
-        }
-        else
-        {
-            return frameCount.ToString();
-        }
-    }
-
-    /// <summary>
-    /// Return a string to get logging of FrameDeltaTime.
-    /// </summary>
-    /// <returns>The get loggin string from frame delta time.</returns>
-    /// <param name="frameDeltaTime">Frame delta time.</param>
-    private string _GetLogginStringFromFrameDeltaTime(float frameDeltaTime)
-    {
-        if (frameDeltaTime == -1.0)
-        {
-            return "N/A";
-        }
-        else
-        {
-            return (frameDeltaTime * SECOND_TO_MILLISECOND).ToString(UI_FLOAT_FORMAT);
-        }
     }
 
     /// <summary>
@@ -372,22 +182,13 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
             Camera cam = Camera.main;
             RaycastHit hitInfo;
 
-            if (m_selectedRect.Contains(guiPosition) || m_hideAllRect.Contains(guiPosition))
-            {
-                // do nothing, the button will handle it
-            }
-            else if (Physics.Raycast(cam.ScreenPointToRay(pos), out hitInfo, 10, 1 << _PrefabObjLayer))
+            if (Physics.Raycast(cam.ScreenPointToRay(pos), out hitInfo, 10, 1 << _PrefabObjLayer))
             {
                 // Found a prefab, select it (so long as it isn't disappearing)!
                 GameObject tapped = hitInfo.collider.transform.root.gameObject;
                 //Debug.Log(tapped.name + " tapped!");
                 m_selectedPrefab = tapped.GetComponent<ARSelectable>();
                 m_selectedPrefab.MakeSelected();
-                
-                //if (!tapped.GetComponent<Animation>().isPlaying)
-                //{
-                //    m_selectedPrefab = tapped.GetComponent<PrefabObject>();
-                //}
             }
             else
             {

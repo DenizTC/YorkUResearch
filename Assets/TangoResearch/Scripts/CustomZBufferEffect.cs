@@ -4,8 +4,6 @@ using System.Collections;
 public class CustomZBufferEffect : MonoBehaviour {
 
     public Shader _Shader;
-    //public RenderTexture _RGBReal;
-    //public RenderTexture _DepthReal;
     public TangoRGB_Out _RGBMapGenerator;
     public PointCloudToDepthMap _DepthMapGenerator;
 
@@ -17,6 +15,8 @@ public class CustomZBufferEffect : MonoBehaviour {
         _material = new Material(_Shader);
         _material.SetTexture("_RGBReal", _RGBMapGenerator.ResultTexture);
         _material.SetTexture("_DepthReal", _DepthMapGenerator._depthTexture);
+        _material.SetFloat("_DepthWidth", _DepthMapGenerator._depthMapWidth);
+        _material.SetFloat("_DepthHeight", _DepthMapGenerator._depthMapHeight);
     }
 	
     void OnRenderImage(RenderTexture src, RenderTexture dest)

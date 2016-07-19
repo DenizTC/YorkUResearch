@@ -73,11 +73,5 @@ public class MeshBuilderWithPhysicsGUIController : MonoBehaviour
             m_tangoApplication.Set3DReconstructionEnabled(m_isEnabled);
         }
 
-        if (GUI.Button(new Rect(Screen.width - 160, 220, 140, 80), "<size=30>Export</size>"))
-        {
-            string filepath = string.Format("/sdcard/DemoMesh.obj");
-            m_dynamicMesh.ExportMeshToObj(filepath);
-            Debug.Log(filepath);
-        }
     }
 }
