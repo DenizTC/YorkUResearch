@@ -13,6 +13,8 @@ public class GUISideBar : MonoBehaviour {
     public Button _AmbientSettingsButton;
     public GUIARDirectionalLight _SunController;
     public Renderer _DynamicMesh;
+    public Button _SwitchMap;
+    public Image _ImageMap;
 
     void Awake () {
         if (!_GUISideBar)
@@ -22,6 +24,7 @@ public class GUISideBar : MonoBehaviour {
     }
 
     void Start() {
+        _SwitchMap.onClick.AddListener(onMapSwitchClick);
         _SunSettingsButton.onClick.AddListener(onSunClick);
         _AmbientSettingsButton.onClick.AddListener(onAmbientClick);
         _WireframeToggle.onValueChanged.AddListener(onWireframeToggled);
@@ -41,6 +44,14 @@ public class GUISideBar : MonoBehaviour {
         GameGlobals.ChangeSelected(Enums.SelectionType.AMBIENT_LIGHT);
         GameGlobals.SetPropertiesOpen(true);
         ARAmbientLight._SceneAmbientLight.MakeSelected();
+    }
+
+    private void onMapSwitchClick() {
+        float v = (_ImageMap.material.GetFloat("_UseMap1") == 1) ? 0 : 1;
+        Debug.Log(v);
+        _ImageMap.material.SetFloat("_UseMap1", v);
+        _ImageMap.enabled = false;
+        _ImageMap.enabled = true;
     }
 
     private void onWireframeToggled(bool value) {

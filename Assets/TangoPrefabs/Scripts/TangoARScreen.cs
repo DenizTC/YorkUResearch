@@ -265,7 +265,7 @@ public class TangoARScreen : MonoBehaviour, ITangoLifecycle, IExperimentalTangoV
         if (cameraId == TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR)
         {
             m_screenUpdateTime = VideoOverlayProvider.RenderLatestFrame(TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR);
-
+            
             // Rendering the latest frame changes a bunch of OpenGL state.  Ensure Unity knows the current OpenGL state.
             GL.InvalidateState();
         }

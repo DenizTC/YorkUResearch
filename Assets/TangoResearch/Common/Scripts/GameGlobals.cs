@@ -3,6 +3,12 @@ using System.Collections;
 
 public static class GameGlobals {
 
+    public static System.Random Rand = new System.Random();
+
+    public static int WaypointLayer = 9;
+
+    public static int WalkableLayer = 10;
+
     public static Enums.SelectionType CurrentDrawingSelection = Enums.SelectionType.NONE;
 
     public static Enums.SelectionType CurrentSelection = Enums.SelectionType.NONE;

@@ -18,6 +18,9 @@ public class GUICanvas : MonoBehaviour {
             Touch t1 = Input.GetTouch(1);
             if (t0.phase == TouchPhase.Began && t1.phase == TouchPhase.Began) {
                 toggleCanvas();
+                Camera.main.cullingMask = (GameGlobals.CanvasEnabled) ?
+                    Camera.main.cullingMask + (1 << GameGlobals.WaypointLayer) :
+                    Camera.main.cullingMask - (1 << GameGlobals.WaypointLayer);
             }
         }
         else if (Input.GetKeyDown(KeyCode.Tab)) {

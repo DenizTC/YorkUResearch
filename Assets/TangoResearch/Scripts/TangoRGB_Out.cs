@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// This class outputs the color (RGB) feed of the tango camera to a RenderTexture, which can be used elsewhere.
@@ -9,11 +9,19 @@ using System.Collections;
 public class TangoRGB_Out : MonoBehaviour {
 
     public RenderTexture ResultTexture;
+    public RenderTexture LastRGBSyncedWithDepth;
     public int Size = 256;
     public TangoARScreen _TangoARCamera;
 
+    public static TangoRGB_Out TangoRGBGenerator;
+
+    public Queue<RenderTexture> RTs = new Queue<RenderTexture>(5);
+
     void Awake()
     {
+        if (!TangoRGBGenerator)
+            TangoRGBGenerator = this;
+
         if (ResultTexture == null)
         {
             ResultTexture = new RenderTexture(Size, Size, 0);
@@ -22,7 +30,24 @@ public class TangoRGB_Out : MonoBehaviour {
         Graphics.Blit(null, ResultTexture, _TangoARCamera.m_screenMaterial);
     }
 
-    void Update() { 
+    int i = 0;
+    void Update() {
+        //RenderTexture RT = new RenderTexture(Size, Size, 0);
+        //RT.name = i++.ToString();
         Graphics.Blit(null, ResultTexture, _TangoARCamera.m_screenMaterial);
+        //if (RTs.Count >= 5)
+        //{
+        //    LastRGBSyncedWithDepth = RTs.Peek();
+        //    RTs.Clear();
+        //}
+        //RTs.Enqueue(RT);
+
+        //ResultTexture = RT;
+
     }
+
+    public void SetSyncedRGB() {
+        LastRGBSyncedWithDepth = ResultTexture;
+    }
+
 }
