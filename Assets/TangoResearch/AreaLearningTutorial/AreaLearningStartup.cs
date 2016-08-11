@@ -20,7 +20,7 @@ public class AreaLearningStartup : MonoBehaviour, ITangoLifecycle
     {
         if (permissionsGranted)
         {
-            AreDescription[] list = AreaDescription.GetList();
+            AreaDescription[] list = AreaDescription.GetList();
             AreaDescription mostRecent = null;
             AreaDescription.Metadata mostRecentMetadata = null;
             if (list.Length > 0)
