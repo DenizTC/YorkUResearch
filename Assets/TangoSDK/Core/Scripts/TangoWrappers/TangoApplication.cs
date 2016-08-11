@@ -1384,6 +1384,8 @@ namespace Tango
         /// </summary>
         private void Awake()
         {
+            m_3drSpaceClearing = SceneLoader.SpaceClearing3DR;
+
             if (!AndroidHelper.LoadTangoLibrary())
             {
                 Debug.Log("Unable to load Tango library.  Things may not work.");
@@ -1432,6 +1434,8 @@ namespace Tango
                 m_tango3DReconstruction = new Tango3DReconstruction(m_3drResolutionMeters, m_3drGenerateColor, m_3drSpaceClearing);
                 m_tango3DReconstruction.m_useAreaDescriptionPose = m_3drUseAreaDescriptionPose;
                 m_tango3DReconstruction.m_sendColorToUpdate = m_3drGenerateColor;
+
+                
             }
 
             TangoSupport.UpdateCurrentRotationIndex();

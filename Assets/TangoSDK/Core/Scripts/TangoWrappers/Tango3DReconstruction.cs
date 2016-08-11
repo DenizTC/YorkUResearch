@@ -112,6 +112,11 @@ namespace Tango
         /// </summary>
         private bool m_enabled = true;
 
+        //public static void SetSpaceClearing(bool val) {
+        //    IntPtr config = API.Tango3DR_Config_create((int)APIConfigType.Context);
+        //    API.Tango3DR_Config_setBool(config, "use_space_clearing", val);
+        //}
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Tango3DReconstruction"/> class.
         /// </summary>
@@ -483,7 +488,7 @@ namespace Tango
         {
             if (m_context == IntPtr.Zero)
             {
-                Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
+                //Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
                 return;
             }
 
@@ -555,7 +560,7 @@ namespace Tango
 
             if (m_context == IntPtr.Zero)
             {
-                Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
+                //Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
                 return;
             }
 

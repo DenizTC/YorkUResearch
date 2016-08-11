@@ -4,13 +4,19 @@ using System.Collections.Generic;
 
 public class Waypoint : MonoBehaviour {
 
+
+
     public float _Radius = 1;
 
     private SphereCollider _collider;
 
     public List<Waypoint> _Neighbors;
+    public List<Waypoint> _Paths = new List<Waypoint>();
+    public Dictionary<Vector3, Waypoint> posInd = new Dictionary<Vector3, Waypoint>(); // key a came from value b
 
-	private void Awake () {
+    public int ID = 0;
+
+    private void Awake () {
         _collider = transform.GetComponent<SphereCollider>();
         _collider.radius = _Radius;
 
@@ -56,9 +62,59 @@ public class Waypoint : MonoBehaviour {
     {
         if (other.transform.tag == "AIAgent")
         {
-            other.transform.parent.GetComponent<AIAgent>()._CurrentWaypoint = this;
+            if (other.transform.GetComponent<AIAgent>() != null)
+                other.transform.GetComponent<AIAgent>()._CurrentWaypoint = this;
+            else
+                other.transform.parent.GetComponent<AIAgent>()._CurrentWaypoint = this;
         }
     }
 
+
+    public void CalculatePaths()
+    {
+
+        // Breadth first search
+
+        
+
+        _Paths.Clear();
+        posInd.Clear();
+
+        Queue<Waypoint> q = new Queue<Waypoint>();
+        q.Enqueue(this);
+
+        Waypoint cur;
+        while (q.Count > 0)
+        {
+            cur = q.Dequeue();
+
+            //if (cur.transform.position == end.transform.position)
+            //    break;
+            foreach (var next in cur._Neighbors)
+            {
+                if (!posInd.ContainsKey(next.transform.position))
+                {
+                    q.Enqueue(next);
+                    posInd.Add(next.transform.position, cur);
+                    //_Paths.Add(cur);
+                }
+            }
+        }
+
+        
+    }
+
+    public List<Waypoint> FindPath(Waypoint end) {
+        Waypoint cur = end;
+        List<Waypoint> path = new List<Waypoint>();
+        while (cur.transform.position != this.transform.position)
+        {
+            Debug.Log("Finding path curID: " + cur.ID);
+            cur = posInd[cur.transform.position];
+            path.Add(cur);
+        }
+        path.Reverse();
+        return path;
+    }
 
 }
