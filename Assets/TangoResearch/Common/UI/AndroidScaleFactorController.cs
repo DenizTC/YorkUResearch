@@ -14,7 +14,7 @@ public class AndroidScaleFactorController : MonoBehaviour {
 
 #if UNITY_ANDROID && !UNITY_EDITOR
         _scaler = GetComponent<CanvasScaler>();
-        _scaler.scaleFactor *= _PercentWidth;
+        _scaler.scaleFactor *= _Scale;
 #endif
 
     }
