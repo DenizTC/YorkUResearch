@@ -9,26 +9,25 @@ using System.Collections.Generic;
 public class TangoRGBGenerator : MonoBehaviour {
 
     public RenderTexture _TangoRGBTexture;
-    public int Size = 256;
-    public TangoARScreen _TangoARCamera;
+    //public int Size = 256;
 
     public static TangoRGBGenerator _TangoRGBGenerator;
 
     void Awake()
     {
-        if (!_TangoRGBGenerator)
-            _TangoRGBGenerator = this;
+        //if (!_TangoRGBGenerator)
+        //    _TangoRGBGenerator = this;
 
-        if (_TangoRGBTexture == null)
-        {
-            _TangoRGBTexture = new RenderTexture(Size, Size, 0);
-            _TangoRGBTexture.name = "TangoRGBTexture";
-        }
-        Graphics.Blit(null, _TangoRGBTexture, _TangoARCamera.m_screenMaterial);
+        //if (_TangoRGBTexture == null)
+        //{
+        //    _TangoRGBTexture = new RenderTexture(Size, Size, 0);
+        //    _TangoRGBTexture.name = "TangoRGBTexture";
+        //}
+        //Graphics.Blit(null, _TangoRGBTexture, _ARScreenMat);
     }
 
     void Update() {
-        Graphics.Blit(null, _TangoRGBTexture, _TangoARCamera.m_screenMaterial);
+        //Graphics.Blit(null, _TangoRGBTexture, _ARScreenMat);
     }
 
 }

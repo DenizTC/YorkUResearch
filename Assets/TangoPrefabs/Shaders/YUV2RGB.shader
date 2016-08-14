@@ -28,7 +28,6 @@ SubShader
         
         #pragma vertex vert
         #pragma fragment frag
-		#include "UnityCG.cginc"
 
         struct appdata
         {
@@ -40,9 +39,6 @@ SubShader
         {
             float4 vertex : SV_POSITION;
             float2 uv : TEXCOORD0;
-
-			float4 screenPos : TEXCOORD1;
-
         };
         
         v2f vert (appdata v)
@@ -52,9 +48,6 @@ SubShader
             // the geometry is rendered in the screen space.
             o.vertex = v.vertex;
             o.uv = v.uv;
-
-			o.screenPos = ComputeScreenPos(o.vertex);
-
             return o;
         }
 
@@ -94,8 +87,7 @@ SubShader
             y = (y * _TexHeight - _Cy) / _Fy;
 
             float r2 = x * x + y * y;
-            float denom = 1.0 + r2 * (_K0 + r2 * (_K1 + r2 * _K2));
-            float icdist = 1.0 / denom;
+            float icdist = 1.0 + r2 * (_K0 + r2 * (_K1 + r2 * _K2));
             undistored_x = x * icdist;
             undistored_y = y * icdist;
 
@@ -157,11 +149,6 @@ SubShader
             float b = y_value + 1.732446 * (u_value - 0.5);
 
             return float4(r, g, b, 1.0);
-
-
-			//float2 uv2 = (i.screenPos.xy / i.screenPos.w);
-			//return float4(uv2.x, uv2.y, 0, 1);
-
         }
         ENDCG
     }

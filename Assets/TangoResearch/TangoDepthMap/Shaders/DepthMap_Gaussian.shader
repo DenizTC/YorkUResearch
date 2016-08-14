@@ -103,7 +103,7 @@
 			fixed4 frag (v2f i) : SV_Target
 			{
 				fixed3 vRGB = tex2D(_MainTex, i.uv);
-				fixed3 rRGB = tex2D(_RGBReal, (i.uv / 2.0) + 0.5);
+				fixed3 rRGB = tex2D(_RGBReal, i.uv);
 				//float rDepth = tex2D(_DepthReal, i.uv).r;
 				float vDepth = UNITY_SAMPLE_DEPTH(tex2D(_LastCameraDepthTexture, i.uv));
 				vDepth = 1 - pow(Linear01Depth(vDepth), 0.5);

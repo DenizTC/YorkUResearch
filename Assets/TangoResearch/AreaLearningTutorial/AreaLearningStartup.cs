@@ -23,7 +23,11 @@ public class AreaLearningStartup : MonoBehaviour, ITangoLifecycle
             AreaDescription[] list = AreaDescription.GetList();
             AreaDescription mostRecent = null;
             AreaDescription.Metadata mostRecentMetadata = null;
-            if (list.Length > 0)
+
+            if (list == null) {
+                Debug.Log("Not on tango device. No area descriptions available.");
+            }
+           else if (list.Length > 0)
             {
                 // Find and load the most recent Area Description
                 mostRecent = list[0];
@@ -44,6 +48,7 @@ public class AreaLearningStartup : MonoBehaviour, ITangoLifecycle
             {
                 // No Area Descriptions available.
                 Debug.Log("No area descriptions available.");
+                //m_tangoApplication.Startup(null);
             }
         }
     }

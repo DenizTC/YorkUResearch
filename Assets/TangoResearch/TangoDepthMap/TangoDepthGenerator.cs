@@ -19,15 +19,10 @@ public struct Int2
 /// <summary>
 /// This class generates a depth map using the point cloud data.
 /// </summary>
-public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, ITangoPose
+public class TangoDepthGenerator : MonoBehaviour, ITangoDepth, ITangoPose
 {
-
-    public TangoARPoseController _ARCam;
-    public TangoPointCloud _PointCloud;
-    public Renderer _DepthMapQuad;
-
     private TangoApplication _tangoApplication;
-    private TangoCameraIntrinsics _ccIntrinsics = new TangoCameraIntrinsics();
+    private TangoPointCloud _tpc;
 
     public int _depthMapWidth = 8;
     public int _depthMapHeight = 8;
@@ -46,10 +41,8 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
     private float[] _sortedPoints = new float[9];
     private int padding = 6;
 
-    private List<Int2> _edgePixels = new List<Int2>();
     private Queue<Int2> _edgesQ = new Queue<Int2>();
 
-    public RenderTexture RT;
     private Vector2 _depthTexureToScreen;
 
     private TangoUnityDepth _lastTangoDepth = new TangoUnityDepth();
@@ -62,6 +55,8 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
             _tangoApplication.Register(this);
         }
 
+        _tpc = FindObjectOfType<TangoPointCloud>();
+
         _depthMap = new float[_depthMapWidth + padding * 2, _depthMapHeight + padding * 2];
         _depthMapDirty = new bool[_depthMapWidth + padding * 2, _depthMapHeight + padding * 2];
         _depthMapOrder = new int[_depthMapWidth + 2 * padding, _depthMapHeight + 2 * padding];
@@ -69,7 +64,6 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
         _depthTexture.filterMode = FilterMode.Point;
 
 
-        RT = new RenderTexture(80, 45, 0);
         _depthTexureToScreen = new Vector2(Screen.width / (float)_depthMapWidth,
             Screen.height / (float)_depthMapHeight);
     }
@@ -119,6 +113,7 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
         //Debug.Log(_pointsToProject.Count);
     }
 
+    public Camera _MainCam;
     private void ProjectPointCloud()
     {
 
@@ -159,7 +154,7 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
                 if (_DepthMapMode == Enums.DepthMapMode.MASKED)
                 {
                     Ray ray =
-                        Camera.main.ScreenPointToRay(
+                        _MainCam.ScreenPointToRay(
                             new Vector3(x * _depthTexureToScreen.x, (_depthMapHeight - y) * _depthTexureToScreen.y, 0));
                     if (Physics.Raycast(ray, 10f))
                     {
@@ -442,6 +437,9 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoLifecycle, ITangoDepth, 
     private Matrix4x4 _poseMatAtDepth = Matrix4x4.identity;
     public void OnTangoDepthAvailable(TangoUnityDepth tangoDepth)
     {
+
+        //_DepthInfoText.text = tangoDepth.m_timestamp.ToString();
+        //return;
 
         _lastTangoDepth = tangoDepth;
         _depthTimestamp = tangoDepth.m_timestamp;

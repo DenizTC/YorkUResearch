@@ -68,9 +68,14 @@
 			}
 
 			float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
-			screenUV = (screenUV / 2.0) + 0.5;
+			//screenUV = (screenUV / 2.0) + 0.5;
 
 			float4 col = tex2D(_MainTex, screenUV);
+
+			//o.Albedo = col;
+			//o.Alpha = 1.0f;
+			//return;
+
 			float4 wire = tex2D(_WireframeTex, IN.uv_WireframeTex);
 			float4 colAndWire = lerp(col, col*0.75, wire.a);
 

@@ -22,7 +22,6 @@ using System.Collections;
 using System.Collections.Generic;
 using Tango;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// GUI controller controls all the debug overlay to show the data for poses.
@@ -230,7 +229,6 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
 
         if (m_selectedMarker != null)
         {
-
             Renderer selectedRenderer = m_selectedMarker.GetComponent<Renderer>();
 
             // GUI's Y is flipped from the mouse's Y
@@ -310,7 +308,6 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
         // Don't handle depth here because the PointCloud may not have been updated yet.  Just
         // tell the coroutine it can continue.
         m_findPlaneWaitingForDepth = false;
-
     }
 
     /// <summary>
@@ -517,8 +514,8 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
     /// <param name="touchPosition">Touch position to find a plane at.</param>
     private IEnumerator _WaitForDepthAndFindPlane(Vector2 touchPosition)
     {
-        Debug.Log("Waiting for new depth------------------------------");
         m_findPlaneWaitingForDepth = true;
+
         // Turn on the camera and wait for a single depth update.
         m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.MAXIMUM);
         while (m_findPlaneWaitingForDepth)
@@ -527,7 +524,7 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
         }
 
         m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
-        Debug.Log("------------------------------New depth available!");
+
         // Find the plane.
         Camera cam = Camera.main;
         Vector3 planeCenter;
@@ -554,8 +551,5 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
 
         Instantiate(m_prefabMarker, planeCenter, Quaternion.LookRotation(forward, up));
         m_selectedMarker = null;
-
-
-
     }
 }

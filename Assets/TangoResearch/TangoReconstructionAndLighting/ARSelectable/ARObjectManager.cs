@@ -24,8 +24,10 @@ using Tango;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
+public class ARObjectManager : MonoBehaviour, ITangoDepth
 {
+
+    public Camera _MainCam;
 
     private float forwardVelocity = 5.0f;
     public ARSelectable[] _Selectables;
@@ -179,10 +181,10 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
             }
 
             Vector2 guiPosition = new Vector2(pos.x, Screen.height - pos.y);
-            Camera cam = Camera.main;
+            //Camera cam = Camera.main;
             RaycastHit hitInfo;
 
-            if (Physics.Raycast(cam.ScreenPointToRay(pos), out hitInfo, 10, 1 << _PrefabObjLayer))
+            if (Physics.Raycast(_MainCam.ScreenPointToRay(pos), out hitInfo, 10, 1 << _PrefabObjLayer))
             {
                 // Found a prefab, select it (so long as it isn't disappearing)!
                 GameObject tapped = hitInfo.collider.transform.root.gameObject;
@@ -221,19 +223,23 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
         //Debug.Log("Waiting for new depth------------------------------");
         m_findPlaneWaitingForDepth = true;
         // Turn on the camera and wait for a single depth update.
-        m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.MAXIMUM);
+
+        if (!m_tangoApplication.m_enable3DReconstruction)
+            m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.MAXIMUM);
         while (m_findPlaneWaitingForDepth)
         {
             yield return null;
         }
 
-        m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
+
+        if(!m_tangoApplication.m_enable3DReconstruction)
+            m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
         //Debug.Log("------------------------------New depth available!");
         // Find the plane.
-        Camera cam = Camera.main;
+        //Camera cam = Camera.main;
         Vector3 planeCenter;
         Plane plane;
-        if (!m_pointCloud.FindPlane(cam, touchPosition, out planeCenter, out plane))
+        if (!m_pointCloud.FindPlane(_MainCam, touchPosition, out planeCenter, out plane))
         {
             yield break;
         }
@@ -241,16 +247,16 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
         // Ensure the location is always facing the camera.  This is like a LookRotation, but for the Y axis.
         Vector3 up = plane.normal;
         Vector3 forward;
-        if (Vector3.Angle(plane.normal, cam.transform.forward) < 175)
+        if (Vector3.Angle(plane.normal, _MainCam.transform.forward) < 175)
         {
-            Vector3 right = Vector3.Cross(up, cam.transform.forward).normalized;
+            Vector3 right = Vector3.Cross(up, _MainCam.transform.forward).normalized;
             forward = Vector3.Cross(right, up).normalized;
         }
         else
         {
             // Normal is nearly parallel to camera look direction, the cross product would have too much
             // floating point error in it.
-            forward = Vector3.Cross(up, cam.transform.right);
+            forward = Vector3.Cross(up, _MainCam.transform.right);
         }
 
         InstantiateSelectable(planeCenter, Quaternion.LookRotation(forward, up));
@@ -266,9 +272,9 @@ public class ARObjectManager : MonoBehaviour, ITangoLifecycle, ITangoDepth
         if (newARS._Projectile)
         {
             newARS.transform.position =
-                Camera.main.transform.position - (Camera.main.transform.up * newARS.transform.localScale.y);
+                _MainCam.transform.position - (_MainCam.transform.up * newARS.transform.localScale.y);
             newARS.transform.GetComponent<Rigidbody>().velocity =
-                (Camera.main.transform.forward * forwardVelocity) + (Camera.main.transform.up * forwardVelocity / 2);
+                (_MainCam.transform.forward * forwardVelocity) + (_MainCam.transform.up * forwardVelocity / 2);
         }
         
     }
