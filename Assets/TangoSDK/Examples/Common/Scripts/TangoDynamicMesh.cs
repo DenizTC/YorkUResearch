@@ -343,11 +343,16 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             int meshVertices = 0;
             sb.Append(string.Format("g {0}\n", tmesh.name));
 
+
             // Vertices.
             for (int i = 0; i < mesh.vertices.Length; i++)
             {
                 meshVertices++;
                 Vector3 v = tmesh.transform.TransformPoint(mesh.vertices[i]);
+
+
+                //sb.Append(string.Format("v {0} {1} {2} 1.0\n", v.x, v.y, -v.z));
+                //continue;
 
                 // Include vertex colors as part of vertex point for applications that support it.
                 if (mesh.colors32.Length > 0)
@@ -381,6 +386,7 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             {
                 foreach (Vector3 uv in mesh.uv)
                 {
+
                     sb.Append(string.Format("vt {0} {1}\n", uv.x, uv.y));
                 }
 
@@ -391,6 +397,7 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             int[] triangles = mesh.triangles;
             for (int j = 0; j < triangles.Length; j += 3)
             {
+
                 sb.Append(string.Format("f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n", triangles[j + 2] + 1 + startVertex, triangles[j + 1] + 1 + startVertex, triangles[j] + 1 + startVertex));
             }
 

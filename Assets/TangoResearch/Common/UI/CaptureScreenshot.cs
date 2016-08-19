@@ -7,10 +7,6 @@ public class CaptureScreenshot : MonoBehaviour {
 
     public Button _ButtonScreenshot;
 
-    public Text _TextMessage;
-
-    public static bool _TextMessageOpen = false;
-
 	void Start () {
         if(_ButtonScreenshot)
             _ButtonScreenshot.onClick.AddListener(onClickButtonScreenShot);
@@ -38,37 +34,20 @@ public class CaptureScreenshot : MonoBehaviour {
 
     public IEnumerator CaptureScreen()
     {
-        if(_TextMessageOpen)
-            yield break;
-
-        _TextMessageOpen = true;
         // Wait for screen rendering to complete
         yield return new WaitForEndOfFrame();
         string fileName = SceneManager.GetActiveScene().name + "-" + System.DateTime.Now.ToString("MM-dd-yy_hh-mm-ss") + ".png";
 
-        #if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR
             Application.CaptureScreenshot("../../../../DCIM/" + fileName, 1);
-        #else
+#else
             Application.CaptureScreenshot(fileName, 1);
-        #endif
+#endif
 
-        _TextMessage.text = "Saved screenshot " + fileName;
-        _TextMessage.enabled = true;
-
-        StartCoroutine(HideTextMessage());
+        MessageManager._MessageManager.PushMessage("Saved screenshot " + fileName);
     }
 
-    /// <summary>
-    /// Hides the text message.
-    /// TODO: Create TextMessage script and move this function to it.
-    /// </summary>
-    public IEnumerator HideTextMessage()
-    {
 
-        yield return new WaitForSeconds(1);
-        _TextMessage.enabled = false;
-        _TextMessageOpen = false;
-    }
 
 
 }

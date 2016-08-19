@@ -34,6 +34,7 @@ public class AreaLearningStartup : MonoBehaviour, ITangoLifecycle
                 mostRecentMetadata = mostRecent.GetMetadata();
                 foreach (AreaDescription areaDescription in list)
                 {
+                    
                     AreaDescription.Metadata metadata = areaDescription.GetMetadata();
                     if (metadata.m_dateTime > mostRecentMetadata.m_dateTime)
                     {
@@ -41,8 +42,15 @@ public class AreaLearningStartup : MonoBehaviour, ITangoLifecycle
                         mostRecentMetadata = metadata;
                     }
                 }
-
+                GameGlobals.ActiveAreaDescription = mostRecentMetadata.m_name;
                 m_tangoApplication.Startup(mostRecent);
+
+                //string fileName = "/sdcard/" + GameGlobals.ActiveAreaDescription + ".obj";
+                //if (System.IO.File.Exists(fileName))
+                //{
+                //    //GameObject go = OBJLoader.LoadOBJFile(fileName);
+
+                //}
             }
             else
             {

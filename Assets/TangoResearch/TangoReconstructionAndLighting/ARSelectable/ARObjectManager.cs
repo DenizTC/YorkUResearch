@@ -55,7 +55,6 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     public int _PrefabObjLayer;
 
     private TangoApplication m_tangoApplication;
-    private TangoARPoseController m_tangoPose;
     private string m_tangoServiceVersion;
 
     /// <summary>
@@ -76,7 +75,6 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     public void Start()
     {
         m_tangoApplication = FindObjectOfType<TangoApplication>();
-        m_tangoPose = FindObjectOfType<TangoARPoseController>();
         m_tangoServiceVersion = TangoApplication.GetTangoServiceVersion();
 
         m_tangoApplication.Register(this);
@@ -86,7 +84,6 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
             Debug.Log(_Selectables[i]._SelectableType.ToString() + " " + i);
             _selectablesMap.Add(_Selectables[i]._SelectableType, i);
         }
-
     }
 
     public void OnDestroy()
@@ -228,6 +225,7 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
             m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.MAXIMUM);
         while (m_findPlaneWaitingForDepth)
         {
+            Debug.Log(m_findPlaneWaitingForDepth);
             yield return null;
         }
 

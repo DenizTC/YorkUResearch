@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SaveData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <fileName>Steves File</fileName>
+  <serializedTypes>
+    <string>System.String, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</string>
+    <string>UnityEngine.Vector3, UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null</string>
+    <string>UnityEngine.Quaternion, UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null</string>
+  </serializedTypes>
+  <serializedData>
+    <DataContainer>
+      <key>Name</key>
+      <value xsi:type="string">Steve</value>
+    </DataContainer>
+    <DataContainer>
+      <key>Dude</key>
+      <value xsi:type="string">Tom</value>
+    </DataContainer>
+    <DataContainer>
+      <key>Key</key>
+      <value xsi:type="xsd:boolean">true</value>
+    </DataContainer>
+    <DataContainer>
+      <key>HealthPotions</key>
+      <value xsi:type="xsd:int">10</value>
+    </DataContainer>
+    <DataContainer>
+      <key>Position</key>
+      <value xsi:type="Vector3">
+        <x>20</x>
+        <y>3</y>
+        <z>-5</z>
+      </value>
+    </DataContainer>
+    <DataContainer>
+      <key>Rotation</key>
+      <value xsi:type="Quaternion">
+        <x>0.1</x>
+        <y>0.1</y>
+        <z>0.1</z>
+        <w>1</w>
+        <eulerAngles>
+          <x>10.0645342</x>
+          <y>12.5288086</y>
+          <z>12.5288086</z>
+        </eulerAngles>
+      </value>
+    </DataContainer>
+  </serializedData>
+</SaveData>

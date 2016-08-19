@@ -2,6 +2,8 @@
 
     public static System.Random Rand = new System.Random();
 
+    public static string ActiveAreaDescription = "";
+
     public static int WaypointLayer = 9;
 
     public static int WalkableLayer = 10;
