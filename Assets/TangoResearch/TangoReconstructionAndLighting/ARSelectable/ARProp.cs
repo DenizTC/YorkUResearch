@@ -5,8 +5,9 @@ public class ARProp : ARSelectable {
 
     private GUIARProp _ui;
 
-    void Start()
+    public override void Start()
     {
+        base.Start();
         _ui = GUIProperties._Properties._PanelProp;
     }
 

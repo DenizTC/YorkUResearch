@@ -7,9 +7,9 @@ public abstract class ARSelectable : MonoBehaviour {
     public float _LifeTime = -1;
     public bool _Projectile = false;
 
-    void Start() {
+    public virtual void Start() {
         if (_LifeTime > 0) {
-            Destroy(this, _LifeTime);
+            Destroy(transform.gameObject, _LifeTime);
         }
     }
 
