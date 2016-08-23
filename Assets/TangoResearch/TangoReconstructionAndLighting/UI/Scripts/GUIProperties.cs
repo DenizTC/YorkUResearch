@@ -3,12 +3,11 @@ using System.Collections;
 
 public class GUIProperties : MonoBehaviour {
 
-    //private Enums.SelectionType _curSelectionType = Enums.SelectionType.NONE;
-
     public GUIARAmbientLight _PanelARAmbientLight;
     public GUIARDirectionalLight _PanelARDirectionalLight;
     public GUIARPointLight _PanelARPointLight;
     public GUIARProp _PanelProp;
+    public GUIAREnemy _PanelEnemy;
 
     public static GUIProperties _Properties;
 

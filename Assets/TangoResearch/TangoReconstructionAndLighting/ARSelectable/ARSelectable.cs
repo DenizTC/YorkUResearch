@@ -3,9 +3,18 @@ using System.Collections;
 
 public abstract class ARSelectable : MonoBehaviour {
 
-    public Enums.SelectionType _SelectableType;
+    protected Enums.SelectionType _SelectableType;
+
+    /// <summary>
+    /// The time in seconds before the object is destroyed. 
+    /// Objects with non positive values will not be destroyed.
+    /// </summary>
     public float _LifeTime = -1;
     public bool _Projectile = false;
+
+    public Sprite _Icon;
+    public Renderer _Gizmo;
+
 
     public virtual void Start() {
         if (_LifeTime > 0) {
@@ -25,24 +34,33 @@ public abstract class ARSelectable : MonoBehaviour {
         Destroy(gameObject);
     }
 
-    /// <summary>
-    /// The Tango time stamp when this objec is created
-    /// 
-    /// This field is used in the Area Learning example, the timestamp is save for the position adjustment when the
-    /// loop closure happens.
-    /// </summary>
-    public float m_timestamp = -1.0f;
-
-    /// <summary>
-    /// The marker's transformation with respect to the device frame.
-    /// </summary>
-    public Matrix4x4 m_deviceTMarker = new Matrix4x4();
-
-    public Renderer _Gizmo;
+    protected void OnClickMove() {
+        StartCoroutine(doMoving());
+    }
 
     private void Remove()
     {
         Destroy(gameObject);
+    }
+
+    private IEnumerator doMoving() {
+        MessageManager._MessageManager.PushMessage("Tap screen to finish.", 2f);
+
+        GameGlobals.MovingObject = true;
+        GameGlobals.SetPropertiesOpen(false);
+        transform.SetParent(Camera.main.transform);
+        if (transform.GetComponent<Rigidbody>() != null)
+            transform.GetComponent<Rigidbody>().isKinematic = true;
+
+        while (GameGlobals.MovingObject)
+        {
+            yield return null;
+        }
+
+        GameGlobals.SetPropertiesOpen(true);
+        transform.SetParent(ARObjectManager._AROBJManager.transform);
+        if (transform.GetComponent<Rigidbody>() != null)
+            transform.GetComponent<Rigidbody>().isKinematic = false;
     }
 
 }

@@ -196,6 +196,15 @@ public class GUIMeshBuilder : MonoBehaviour
 
             setMeshing(false);
         }
+
+        while (_saveWorldThread != null && _saveWorldThread.ThreadState == ThreadState.Running)
+        {
+            yield return null;
+        }
+
+        string fileName = "/sdcard/" + GameGlobals.ActiveAreaDescription + ".obj";
+        MessageManager._MessageManager.PushMessageOK("Saved mesh successfully: " + fileName);
+
     }
 
     private IEnumerator doLoad()
@@ -235,8 +244,12 @@ public class GUIMeshBuilder : MonoBehaviour
 
             _loadedMesh.transform.Rotate(Vector3.up, 180);
             _loadedMesh.transform.GetComponentInChildren<MeshFilter>().transform.gameObject.AddComponent<MeshCollider>();
-            _loadedMesh.layer = GameGlobals.WalkableLayer;
             _loadedMesh.transform.GetComponentInChildren<Renderer>().material = _worldMaterial;
+            _loadedMesh.layer = GameGlobals.WalkableLayer;
+            foreach (Transform t in _loadedMesh.transform)
+            {
+                t.gameObject.layer = GameGlobals.WalkableLayer;
+            }
 
             _ClearButton.gameObject.SetActive(false);
             _PauseResumeButton.gameObject.SetActive(false);

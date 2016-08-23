@@ -4,15 +4,17 @@
 
     public static string ActiveAreaDescription = "";
 
+    public static int ARObjectLayer = 8;
+
     public static int WaypointLayer = 9;
 
     public static int WalkableLayer = 10;
 
-    //public static bool SpaceClearing3DR = false;
-
-    public static Enums.SelectionType CurrentDrawingSelection = Enums.SelectionType.NONE;
-
     public static Enums.SelectionType CurrentSelection = Enums.SelectionType.NONE;
+
+    public static int CurrentARSelectableIndex = 0;
+
+    public static bool MovingObject = false;
 
     public static bool DrawWireframe = true;
 
@@ -42,42 +44,34 @@
             selection != Enums.SelectionType.AMBIENT_LIGHT)
             CurrentSelection = selection;
 
+        _properties._PanelARAmbientLight.gameObject.SetActive(false);
+        _properties._PanelARDirectionalLight.gameObject.SetActive(false);
+        _properties._PanelARPointLight.gameObject.SetActive(false);
+        _properties._PanelProp.gameObject.SetActive(false);
+        _properties._PanelEnemy.gameObject.SetActive(false);
+
         switch (selection)
         {
             case Enums.SelectionType.POINT_LIGHT:
-                _properties._PanelARAmbientLight.gameObject.SetActive(false);
-                _properties._PanelARDirectionalLight.gameObject.SetActive(false);
                 _properties._PanelARPointLight.gameObject.SetActive(true);
-                _properties._PanelProp.gameObject.SetActive(false);
                 break;
             case Enums.SelectionType.DIRECTIONAL_LIGHT:
-                _properties._PanelARAmbientLight.gameObject.SetActive(false);
                 _properties._PanelARDirectionalLight.gameObject.SetActive(true);
-                _properties._PanelARPointLight.gameObject.SetActive(false);
-                _properties._PanelProp.gameObject.SetActive(false);
                 break;
             case Enums.SelectionType.AMBIENT_LIGHT:
-                _properties._PanelARAmbientLight.gameObject.SetActive(true);
-                _properties._PanelARDirectionalLight.gameObject.SetActive(false);
-                _properties._PanelARPointLight.gameObject.SetActive(false);
-                _properties._PanelProp.gameObject.SetActive(false);
+                _properties._PanelARAmbientLight.gameObject.SetActive(true);  
                 break;
             case Enums.SelectionType.PROP:
-                _properties._PanelARAmbientLight.gameObject.SetActive(false);
-                _properties._PanelARDirectionalLight.gameObject.SetActive(false);
-                _properties._PanelARPointLight.gameObject.SetActive(false);
                 _properties._PanelProp.gameObject.SetActive(true);
+                break;
+            case Enums.SelectionType.ENEMY:
+                _properties._PanelEnemy.gameObject.SetActive(true);
                 break;
             default:
                 SetPropertiesOpen(false);
                 break;
         }
 
-    }
-
-    public static void ChangeDrawingSelection(Enums.SelectionType selection)
-    {
-        CurrentDrawingSelection = selection;
     }
 
 }

@@ -17,25 +17,24 @@
 //
 // </copyright>
 //-----------------------------------------------------------------------
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using Tango;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class ARObjectManager : MonoBehaviour, ITangoDepth
 {
 
+    public static ARObjectManager _AROBJManager;
     public Camera _MainCam;
 
     private float forwardVelocity = 5.0f;
-    public ARSelectable[] _Selectables;
+    public ARSelectable[] _ARObjects;
 
     /// <summary>
-    /// Index map for the _Selectables array.
+    /// Maps unique AR object id to _ARObjects array index.
     /// </summary>
-    private Dictionary<Enums.SelectionType, int> _selectablesMap = new Dictionary<Enums.SelectionType, int>();
+    private Dictionary<int, int> _arObjMap = new Dictionary<int, int>();
 
     /// <summary>
     /// The touch effect to place on taps.
@@ -52,8 +51,6 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     /// </summary>
     public TangoPointCloud m_pointCloud;
 
-    public int _PrefabObjLayer;
-
     private TangoApplication m_tangoApplication;
     private string m_tangoServiceVersion;
 
@@ -67,22 +64,24 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     /// </summary>
     private ARSelectable m_selectedPrefab;
 
-    /// <summary>
-    /// If set, this is the rectangle bounding the selected prefab.
-    /// </summary>
-    private Rect m_selectedRect;
-
     public void Start()
     {
+        if(!_AROBJManager)
+            _AROBJManager = this;
+
         m_tangoApplication = FindObjectOfType<TangoApplication>();
         m_tangoServiceVersion = TangoApplication.GetTangoServiceVersion();
 
         m_tangoApplication.Register(this);
 
-        for (int i = 0; i < _Selectables.Length; i++)
+
+        for (int i = 0; i < _ARObjects.Length; i++)
         {
-            Debug.Log(_Selectables[i]._SelectableType.ToString() + " " + i);
-            _selectablesMap.Add(_Selectables[i]._SelectableType, i);
+            // Setup the index map
+            _arObjMap.Add(_ARObjects[i].GetInstanceID(), i);
+
+            // Add the ARToggles
+            GUISelectables._GUISelectables.AddSelectable(_ARObjects[i]._Icon, _ARObjects[i].GetInstanceID());
         }
     }
 
@@ -93,7 +92,80 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
 
     public void Update()
     {
-        _UpdateLocationMarker();
+        if (Input.touchCount == 2)
+        {
+            return;
+        }
+
+        if (Input.touchCount == 1 || Input.GetMouseButtonDown(1))
+        {
+            Vector2 pos = new Vector2();
+            if (Input.touchCount == 1)
+            {
+                Touch t = Input.GetTouch(0);
+                pos = t.position;
+                if (t.phase != TouchPhase.Began ||
+                    UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(t.fingerId))
+                {
+                    return;
+                }
+            }
+            else
+            {
+                if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                    return;
+                pos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+            }
+
+            if (GameGlobals.MovingObject) {
+                GameGlobals.MovingObject = false;
+                return;
+            }
+
+            if (GameGlobals.PropertiesPanelOpen)
+            {
+                GameGlobals.SetPropertiesOpen(false);
+                GUISelectables._GUISelectables.DeselectAll();
+                return;
+            }            
+
+            if (GUISelectables._GUISelectables.IsAnyToggled())
+            {
+                // Draw selected object.
+
+                // Place a new point at that location, clear selection
+                m_selectedPrefab = null;
+                GameGlobals.ChangeSelected(Enums.SelectionType.NONE);
+
+                StartCoroutine(_WaitForDepthAndFindPlane(pos));
+
+                // Because we may wait a small amount of time, this is a good place to play a small
+                // animation so the user knows that their input was received.
+                RectTransform touchEffectRectTransform = (RectTransform)Instantiate(m_prefabTouchEffect);
+                touchEffectRectTransform.transform.SetParent(m_canvas.transform, false);
+                Vector2 normalizedPosition = pos;
+                normalizedPosition.x /= Screen.width;
+                normalizedPosition.y /= Screen.height;
+                touchEffectRectTransform.anchorMin = touchEffectRectTransform.anchorMax = normalizedPosition;
+
+                GUISelectables._GUISelectables.DeselectAll();
+            }
+            else
+            {
+                RaycastHit hitInfo;
+                if (Physics.Raycast(_MainCam.ScreenPointToRay(pos), out hitInfo, 10, 1 << GameGlobals.ARObjectLayer))
+                {
+                    // Select tapped object.
+
+                    GameObject tapped = hitInfo.collider.transform.GetComponent<ObjectRoot>()._ObjectRoot.gameObject;
+                    m_selectedPrefab = tapped.GetComponent<ARSelectable>();
+                    m_selectedPrefab.MakeSelected();
+                }
+            }
+
+
+
+        }
     }
     
     public void OnTangoPermissions(bool permissionsGranted)
@@ -140,84 +212,12 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     }
 
     /// <summary>
-    /// Update location marker state.
-    /// </summary>
-    private void _UpdateLocationMarker()
-    {
-
-        if (Input.touchCount == 2)
-        {
-            return;
-        }
-
-        if (Input.touchCount == 1 || Input.GetMouseButtonDown(1))
-        {
-            // Single tap -- place new location or select existing location.
-
-            Vector2 pos = new Vector2();
-            if (Input.touchCount == 1)
-            {
-                Touch t = Input.GetTouch(0);
-                pos = t.position;
-                if (t.phase != TouchPhase.Began ||
-                    UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(t.fingerId))
-                {
-                    return;
-                }
-            }
-            else
-            {
-                if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-                    return;
-                pos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
-            }
-
-            if (GameGlobals.PropertiesPanelOpen) {
-                GameGlobals.SetPropertiesOpen(false);
-                return;
-            }
-
-            Vector2 guiPosition = new Vector2(pos.x, Screen.height - pos.y);
-            //Camera cam = Camera.main;
-            RaycastHit hitInfo;
-
-            if (Physics.Raycast(_MainCam.ScreenPointToRay(pos), out hitInfo, 10, 1 << _PrefabObjLayer))
-            {
-                // Found a prefab, select it (so long as it isn't disappearing)!
-                GameObject tapped = hitInfo.collider.transform.root.gameObject;
-                //Debug.Log(tapped.name + " tapped!");
-                m_selectedPrefab = tapped.GetComponent<ARSelectable>();
-                m_selectedPrefab.MakeSelected();
-            }
-            else
-            {
-                // Place a new point at that location, clear selection
-                m_selectedPrefab = null;
-                GameGlobals.ChangeSelected(Enums.SelectionType.NONE);
-
-                StartCoroutine(_WaitForDepthAndFindPlane(pos));
-
-                // Because we may wait a small amount of time, this is a good place to play a small
-                // animation so the user knows that their input was received.
-                RectTransform touchEffectRectTransform = (RectTransform)Instantiate(m_prefabTouchEffect);
-                touchEffectRectTransform.transform.SetParent(m_canvas.transform, false);
-                Vector2 normalizedPosition = pos;
-                normalizedPosition.x /= Screen.width;
-                normalizedPosition.y /= Screen.height;
-                touchEffectRectTransform.anchorMin = touchEffectRectTransform.anchorMax = normalizedPosition;
-            }
-        }
-
-    }
-
-    /// <summary>
     /// Wait for the next depth update, then find the plane at the touch position.
     /// </summary>
     /// <returns>Coroutine IEnumerator.</returns>
     /// <param name="touchPosition">Touch position to find a plane at.</param>
     private IEnumerator _WaitForDepthAndFindPlane(Vector2 touchPosition)
     {
-        //Debug.Log("Waiting for new depth------------------------------");
         m_findPlaneWaitingForDepth = true;
         // Turn on the camera and wait for a single depth update.
 
@@ -232,9 +232,7 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
 
         if(!m_tangoApplication.m_enable3DReconstruction)
             m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
-        //Debug.Log("------------------------------New depth available!");
         // Find the plane.
-        //Camera cam = Camera.main;
         Vector3 planeCenter;
         Plane plane;
         if (!m_pointCloud.FindPlane(_MainCam, touchPosition, out planeCenter, out plane))
@@ -257,24 +255,26 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
             forward = Vector3.Cross(up, _MainCam.transform.right);
         }
 
-        InstantiateSelectable(planeCenter, Quaternion.LookRotation(forward, up));
+        InstantiateARObject(planeCenter, Quaternion.LookRotation(forward, up));
+
         m_selectedPrefab = null;
     }
 
-    private void InstantiateSelectable(Vector3 pos, Quaternion rot)
-    {
-        //ARSelectable ars = _Selectables[_selectablesMap[GameGlobals.CurrentDrawingSelection]];
-        ARSelectable newARS = 
-            GameObject.Instantiate(_Selectables[_selectablesMap[GameGlobals.CurrentDrawingSelection]], pos, rot) as ARSelectable;
-        //Debug.Log(newARS.GetType().ToString());
-        if (newARS._Projectile)
+    public void InstantiateARObject(Vector3 pos, Quaternion rot) {
+        int index = _arObjMap[GameGlobals.CurrentARSelectableIndex];
+
+        ARSelectable newARO =
+            Instantiate(_ARObjects[index], pos, rot) as ARSelectable;
+        newARO.transform.SetParent(transform);
+        if (newARO._Projectile)
         {
-            newARS.transform.position =
-                _MainCam.transform.position - (_MainCam.transform.up * newARS.transform.localScale.y);
-            newARS.transform.GetComponent<Rigidbody>().velocity =
+            newARO.transform.position =
+                _MainCam.transform.position - (_MainCam.transform.up * newARO.transform.localScale.y);
+            newARO.transform.GetComponent<Rigidbody>().velocity =
                 (_MainCam.transform.forward * forwardVelocity) + (_MainCam.transform.up * forwardVelocity / 2);
+            newARO.transform.GetComponent<Rigidbody>().angularVelocity = 
+                new Vector3(GameGlobals.Rand.Next(0,45), GameGlobals.Rand.Next(0, 45), GameGlobals.Rand.Next(0, 45));
         }
-        
     }
 
 }

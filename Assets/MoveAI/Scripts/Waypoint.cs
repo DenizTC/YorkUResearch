@@ -8,7 +8,7 @@ public class Waypoint : MonoBehaviour {
 
     public float _Radius = 1;
 
-    private SphereCollider _collider;
+    private CapsuleCollider _collider;
 
     public List<Waypoint> _Neighbors;
     public List<Waypoint> _Paths = new List<Waypoint>();
@@ -17,7 +17,7 @@ public class Waypoint : MonoBehaviour {
     public int ID = 0;
 
     private void Awake () {
-        _collider = transform.GetComponent<SphereCollider>();
+        _collider = transform.GetComponent<CapsuleCollider>();
         _collider.radius = _Radius;
 
         //UpdateNeighbors();
@@ -30,7 +30,7 @@ public class Waypoint : MonoBehaviour {
     public void UpdateRadius(float radius) {
         _Radius = radius;
         if (!_collider)
-            _collider = transform.GetComponent<SphereCollider>();
+            _collider = transform.GetComponent<CapsuleCollider>();
         _collider.radius = _Radius;
     }
 
@@ -60,13 +60,16 @@ public class Waypoint : MonoBehaviour {
 
     void OnTriggerEnter(Collider other)
     {
-        if (other.transform.tag == "AIAgent")
-        {
-            if (other.transform.GetComponent<AIAgent>() != null)
-                other.transform.GetComponent<AIAgent>()._CurrentWaypoint = this;
-            else
-                other.transform.parent.GetComponent<AIAgent>()._CurrentWaypoint = this;
-        }
+        if (other.transform.GetComponent<PositionTracker>() != null)
+            other.transform.GetComponent<PositionTracker>()._CurrentWaypoint = this;
+
+        //if (other.transform.tag == "AIPositionTracker")
+        //{
+        //    if (other.transform.GetComponent<PositionTracker>() != null)
+        //        other.transform.GetComponent<PositionTracker>()._CurrentWaypoint = this;
+        //    else
+        //        other.transform.parent.GetComponent<PositionTracker>()._CurrentWaypoint = this;
+        //}
     }
 
 
@@ -109,7 +112,6 @@ public class Waypoint : MonoBehaviour {
         List<Waypoint> path = new List<Waypoint>();
         while (cur.transform.position != this.transform.position)
         {
-            Debug.Log("Finding path curID: " + cur.ID);
             cur = posInd[cur.transform.position];
             path.Add(cur);
         }

@@ -5,13 +5,19 @@ using UnityEngine.UI;
 
 public class WaypointManager : MonoBehaviour {
 
-    
+    /// <summary>
+    /// The default waypoint manager.
+    /// Instanced AIAgents will be managed by the default waypoint manager.
+    /// </summary>
+    public static WaypointManager _DefaultWM;
+
     public Button _ButtonAIAgent;
     public Button _ButtonRecalcPaths;
 
     public Toggle _ToggleAutoWP;
 
     public int _WalkableLayer;
+    public int _MinWaypoints = 3;
     public List<Waypoint> _Waypoints = new List<Waypoint>();
     public Waypoint _WaypointPrefab;
     public float _WaypointRadius = 1;
@@ -21,8 +27,12 @@ public class WaypointManager : MonoBehaviour {
     public bool _AutoSpawnWaypoints = false;
 
     private Vector3 _lastSpawnedPos;
+    private bool _pathsUpToDate = false;
 
     void Start () {
+        if (!_DefaultWM)
+            _DefaultWM = this;
+
         foreach (var waypoint in GetComponentsInChildren<Waypoint>())
         {
             AddWaypoint(waypoint);
@@ -53,7 +63,29 @@ public class WaypointManager : MonoBehaviour {
         
     }
 
-    public void Clear() {
+    #region UI Events
+
+    private void onToggleAutoWPChanged(bool val) {
+        _AutoSpawnWaypoints = val;
+    }
+
+    private void onAIAgentClick()
+    {
+
+        if (_Waypoints.Count >= _MinWaypoints)
+            AddAIAgent(AIAgent.Action.FOLLOW);
+
+    }
+
+    private void onRecalcPathsClick()
+    {
+        CalculatePaths();
+    }
+
+    #endregion
+
+    public void Clear()
+    {
         int count = transform.childCount;
 
         foreach (var ai in _AIAgents)
@@ -70,16 +102,12 @@ public class WaypointManager : MonoBehaviour {
 
     }
 
-    private void onToggleAutoWPChanged(bool val) {
-        _AutoSpawnWaypoints = val;
-    }
-
-
     public void AddWaypoint(Waypoint wp) {
         if(wp.transform.parent != transform)
             wp.transform.parent = transform;
         wp.ID = _Waypoints.Count;
         _Waypoints.Add(wp);
+        _pathsUpToDate = false;
     }
 
     public void AddWaypoint(Vector3 pos) {
@@ -108,17 +136,21 @@ public class WaypointManager : MonoBehaviour {
     }
 
     public void AddAIAgent(AIAgent.Action action) {
+
+
         Waypoint initWP = RandomWaypoint();
         AIAgent ai = Instantiate(_AIAgentPrefab, initWP.transform.position + new Vector3(0,1,0), Quaternion.identity) as AIAgent;
-        ai._CurrentWaypoint = initWP;
-        ai._Target = _WaypointSpawner.GetComponent<AIAgent>();
 
-        if (ai.transform.parent != transform)
-            ai.transform.parent = transform;
+        //ai.Init(this, action);
+        //ai._CurrentWaypoint = initWP;
+        //ai._Target = _WaypointSpawner.GetComponent<PositionTracker>();
 
-        _AIAgents.Add(ai);
+        //if (ai.transform.parent != transform)
+        //    ai.transform.parent = transform;
 
-        ai.StartAction(action);
+        //_AIAgents.Add(ai);
+
+        //ai.StartAction(action);
     }
 
     public Waypoint RandomWaypoint()
@@ -167,39 +199,15 @@ public class WaypointManager : MonoBehaviour {
 
     }
 
-    private void onAIAgentClick() {
-
-        if(_Waypoints.Count > 0)
-            AddAIAgent(AIAgent.Action.WANDER);
-
-    }
-
-    private void onRecalcPathsClick()
-    {
+    public void CalculatePaths() {
+        if (_pathsUpToDate)
+            return;
 
         foreach (var wp in _Waypoints)
         {
             wp.CalculatePaths();
         }
-
-        //Debug.Log("Members of wp0 paths:");
-        //foreach (var wp in _Waypoints[0].posInd)
-        //{
-        //    Debug.Log(wp.Value.ID);
-        //}
-        //Debug.Log("End wp0");
-
-        //List<Waypoint> path = _Waypoints[0].FindPath(_Waypoints[2]);
-        //Debug.Log("Path from 0 to 2:");
-        //foreach (var wp in path)
-        //{
-        //    Debug.Log(wp.ID);
-        //}
-        //Debug.Log("Finished finding path from 0 to 2");
-
-
+        _pathsUpToDate = true;
     }
-
-    
 
 }

@@ -10,8 +10,11 @@ public class ARAmbientLight : ARSelectable {
 
     private GUIARAmbientLight _ui;
 
-    void Start()
+    public override void Start()
     {
+        base.Start();
+        this._SelectableType = Enums.SelectionType.AMBIENT_LIGHT;
+
         if (!_SceneAmbientLight)
             _SceneAmbientLight = this;
 

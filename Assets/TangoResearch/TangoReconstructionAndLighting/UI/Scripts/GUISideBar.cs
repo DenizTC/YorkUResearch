@@ -34,7 +34,7 @@ public class GUISideBar : MonoBehaviour {
         _AmbientSettingsButton.onClick.AddListener(onAmbientClick);
         _WireframeToggle.onValueChanged.AddListener(onWireframeToggled);
         _EnvShadowToggle.onValueChanged.AddListener(onEnvShadowToggled);
-        _SpaceClearToggle.onValueChanged.AddListener(onSpaceClearToggled);
+        //_SpaceClearToggle.onValueChanged.AddListener(onSpaceClearToggled);
 
         _WireframeToggle.isOn = GameGlobals.DrawWireframe;
         _EnvShadowToggle.isOn = GameGlobals.EnvironmentShadows;

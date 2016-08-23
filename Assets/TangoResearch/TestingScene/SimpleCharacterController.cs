@@ -28,15 +28,15 @@ public class SimpleCharacterController : MonoBehaviour {
 
 	}
 
-    private void movePlayer(float _Speed)
+    private void movePlayer(float speed)
     {
-        transform.position = new Vector3(transform.position.x + _Speed, transform.position.y, transform.position.z);
+        transform.position = new Vector3(transform.position.x + speed, transform.position.y, transform.position.z);
     }
 
-    private void movePlayerRigidBody(float _Speed)
+    private void movePlayerRigidBody(float speed)
     {
         //_Rigidbody.AddForce(_Speed, 0, 0, ForceMode.VelocityChange);
-        _Rigidbody.velocity = new Vector3(_Speed, 0, 0);
+        _Rigidbody.velocity = new Vector3(speed, 0, 0);
     }
 
 }

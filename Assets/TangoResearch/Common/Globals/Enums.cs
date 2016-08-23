@@ -3,7 +3,7 @@ using System.Collections;
 
 public class Enums : MonoBehaviour {
 
-    public enum SelectionType { NONE, POINT_LIGHT, DIRECTIONAL_LIGHT, PROP, AMBIENT_LIGHT };
+    public enum SelectionType { NONE, POINT_LIGHT, DIRECTIONAL_LIGHT, PROP, AMBIENT_LIGHT, ENEMY };
 
     public enum DepthFilter { NONE, KUWAHARA, GUIDEDFILTER, GAUSSIAN, MEDIAN, MASKEDMEAN };
 

@@ -10,6 +10,7 @@ public class MessageManager : MonoBehaviour {
     public Transform _MessageBoxPanel;
     public Text _TextMessage;
     public MessageOkCancel _PrefabMessageOkCancel;
+    public MessageOk _PrefabMessageOk;
 
     public static MessageManager _MessageManager;
 
@@ -41,6 +42,16 @@ public class MessageManager : MonoBehaviour {
         oc.GetComponent<RectTransform>().localPosition = Vector3.zero;
         oc.GetComponent<RectTransform>().localScale = Vector3.one;
         oc.Init(message);
+    }
+
+    public void PushMessageOK(string message)
+    {
+        MessageOk o = Instantiate(_PrefabMessageOk) as MessageOk;
+        _MessageBoxPanel.gameObject.SetActive(true);
+        o.transform.SetParent(_MessageBoxPanel);
+        o.GetComponent<RectTransform>().localPosition = Vector3.zero;
+        o.GetComponent<RectTransform>().localScale = Vector3.one;
+        o.Init(message);
     }
 
 }

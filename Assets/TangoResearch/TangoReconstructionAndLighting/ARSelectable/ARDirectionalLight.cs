@@ -12,8 +12,11 @@ public class ARDirectionalLight : ARSelectable {
 
     private GUIARDirectionalLight _ui;
 
-    void Start()
+    public override void Start()
     {
+        base.Start();
+        this._SelectableType = Enums.SelectionType.DIRECTIONAL_LIGHT;
+
         if (!_Sun)
             _Sun = this;
 

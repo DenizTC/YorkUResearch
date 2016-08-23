@@ -13,7 +13,11 @@ public class ARPointLight : ARSelectable {
 
     private GUIARPointLight _ui;
 
-    void Start() {
+    public override void Start() {
+        base.Start();
+
+        this._SelectableType = Enums.SelectionType.POINT_LIGHT;
+
         _ui = GUIProperties._Properties._PanelARPointLight;
 
         _Light.range = _range;
@@ -60,6 +64,7 @@ public class ARPointLight : ARSelectable {
         _ui._ColorPicker.onValueChanged.AddListener(OnColorChanged);
         _ui._RangeSlider.onValueChanged.AddListener(OnRangeChanged);
         _ui._DestroyButton.onClick.AddListener(delegate { this.OnDestoyClick(); });
+        _ui._ButtonMove.onClick.AddListener(this.OnClickMove);
 
         _ui._IntensitySlider.value = _lightIntensity;
         _ui._ShadowIntensitySlider.value = _shadowIntensity;
