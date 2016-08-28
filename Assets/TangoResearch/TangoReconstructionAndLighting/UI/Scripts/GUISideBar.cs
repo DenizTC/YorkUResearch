@@ -78,7 +78,9 @@ public class GUISideBar : MonoBehaviour {
         UnityEngine.Rendering.ShadowCastingMode sMode = (GameGlobals.EnvironmentShadows) ? 
             UnityEngine.Rendering.ShadowCastingMode.On : 
             UnityEngine.Rendering.ShadowCastingMode.Off;
-        _DynamicMesh.GetComponent<TangoDynamicMesh>().UpdateShadowCastingMode(sMode);
+
+        MessageManager._MessageManager.PushMessage("Environment shadows not supported in this build!");
+        //_DynamicMesh.GetComponent<TangoDynamicMesh>().UpdateShadowCastingMode(sMode);
     }
 
 }

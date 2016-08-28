@@ -6,7 +6,8 @@ public class ARAmbientLight : ARSelectable {
     public static ARAmbientLight _SceneAmbientLight;
 
     public float _intensity = 1f;
-    public Color _color = new Color(0.21f,0.22f,0.26f,1);
+    //public Color _color = new Color(0.21f,0.22f,0.26f,1);
+    public Color _color = new Color(0.5f, 0.5f, 0.5f, 1);
 
     private GUIARAmbientLight _ui;
 
@@ -28,13 +29,17 @@ public class ARAmbientLight : ARSelectable {
     {
         _intensity = value;
         RenderSettings.ambientIntensity = _intensity;
+        DynamicGI.UpdateEnvironment();
 
     }
 
     private void onColorChanged(Color c)
     {
         _color = c;
-        RenderSettings.ambientLight = _color;
+        //RenderSettings.ambientLight = _color;
+
+        RenderSettings.skybox.SetColor("_Tint", _color);
+        DynamicGI.UpdateEnvironment();
     }
 
     public override void MakeSelected()

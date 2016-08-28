@@ -94,15 +94,15 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoDepth, ITangoPose
     }
 
     private List<Vector3> _pointsToProject = new List<Vector3>();
-    private void FindPointsToProject()
+    private void FindPointsToProject(TangoUnityDepth depthData)
     {
         _pointsToProject.Clear();
 
-        for (int i = 0; i < _lastTangoDepth.m_pointCount; i++)
+        for (int i = 0; i < depthData.m_pointCount; i++)
         {
-            Vector3 XYZ = new Vector3(_lastTangoDepth.m_points[i * 3],
-                _lastTangoDepth.m_points[i * 3 + 1],
-                _lastTangoDepth.m_points[i * 3 + 2]);
+            Vector3 XYZ = new Vector3(depthData.m_points[i * 3],
+                depthData.m_points[i * 3 + 1],
+                depthData.m_points[i * 3 + 2]);
 
             Vector2 pixelCoord = ComputeScreenCoordinate(XYZ);
             if (pixelCoord.x >= 0 && pixelCoord.x <= 1280 && pixelCoord.y >= 0 && pixelCoord.y <= 720)
@@ -110,7 +110,7 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoDepth, ITangoPose
                 _pointsToProject.Add(XYZ);
             }
         }
-        //Debug.Log(_pointsToProject.Count);
+        
     }
 
     public Camera _MainCam;
@@ -429,6 +429,17 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoDepth, ITangoPose
         //return new Vector2(v1, v2);
     }
 
+    public float[,] GetDepthMap(TangoUnityDepth depth) {
+
+        FindPointsToProject(depth);
+        GenerateDepthMap();
+        return _depthMap;
+    }
+
+    public static float ProjectToWorldDepth(float depth) {
+        return 1 + depth * 4.5f;
+    }
+
     public Text _DepthInfoText;
     public Text _RGBInfoText;
     private Vector3 _poseTransAtDepth = Vector3.zero;
@@ -443,7 +454,7 @@ public class TangoDepthGenerator : MonoBehaviour, ITangoDepth, ITangoPose
 
         _lastTangoDepth = tangoDepth;
         _depthTimestamp = tangoDepth.m_timestamp;
-        FindPointsToProject();
+        FindPointsToProject(_lastTangoDepth);
 
         if (!_DepthPrediction)
         {

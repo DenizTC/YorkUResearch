@@ -189,29 +189,6 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
     }
 
     /// <summary>
-    /// Convert a 3D bounding box into a 2D Rect.
-    /// </summary>
-    /// <returns>The 2D Rect in Screen coordinates.</returns>
-    /// <param name="cam">Camera to use.</param>
-    /// <param name="bounds">3D bounding box.</param>
-    private Rect WorldBoundsToScreen(Camera cam, Bounds bounds)
-    {
-        Vector3 center = bounds.center;
-        Vector3 extents = bounds.extents;
-        Bounds screenBounds = new Bounds(cam.WorldToScreenPoint(center), Vector3.zero);
-
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(+extents.x, +extents.y, +extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(+extents.x, +extents.y, -extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(+extents.x, -extents.y, +extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(+extents.x, -extents.y, -extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, +extents.y, +extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, +extents.y, -extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, -extents.y, +extents.z)));
-        screenBounds.Encapsulate(cam.WorldToScreenPoint(center + new Vector3(-extents.x, -extents.y, -extents.z)));
-        return Rect.MinMaxRect(screenBounds.min.x, screenBounds.min.y, screenBounds.max.x, screenBounds.max.y);
-    }
-
-    /// <summary>
     /// Wait for the next depth update, then find the plane at the touch position.
     /// </summary>
     /// <returns>Coroutine IEnumerator.</returns>

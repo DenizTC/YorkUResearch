@@ -68,20 +68,9 @@
         half4 LightingTangoEnvironmentLightingStandard (SurfaceOutputStandard s, half3 viewDir, UnityGI gi) {
             s.Normal = normalize (s.Normal);
 
-
-
-			float4 hdrReflection = 1.0;
-			float3 reflectedDir = reflect(viewDir, s.Normal);
-			float4 reflection = UNITY_SAMPLE_TEXCUBE(unity_SpecCube0, reflectedDir);
-			hdrReflection.rgb = DecodeHDR(reflection, unity_SpecCube0_HDR);
-			hdrReflection.a = 1.0;
-			s.Albedo = lerp(s.Albedo, hdrReflection, s.Smoothness);
-
             half oneMinusReflectivity;
             half3 specColor;
             s.Albedo = DiffuseAndSpecularFromMetallic (s.Albedo, s.Metallic, /*out*/ specColor, /*out*/ oneMinusReflectivity);
-
-
 
             // shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
             // this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha

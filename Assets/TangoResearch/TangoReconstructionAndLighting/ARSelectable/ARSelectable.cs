@@ -43,7 +43,7 @@ public abstract class ARSelectable : MonoBehaviour {
         Destroy(gameObject);
     }
 
-    private IEnumerator doMoving() {
+    protected virtual IEnumerator doMoving() {
         MessageManager._MessageManager.PushMessage("Tap screen to finish.", 2f);
 
         GameGlobals.MovingObject = true;
@@ -59,6 +59,7 @@ public abstract class ARSelectable : MonoBehaviour {
 
         GameGlobals.SetPropertiesOpen(true);
         transform.SetParent(ARObjectManager._AROBJManager.transform);
+
         if (transform.GetComponent<Rigidbody>() != null)
             transform.GetComponent<Rigidbody>().isKinematic = false;
     }

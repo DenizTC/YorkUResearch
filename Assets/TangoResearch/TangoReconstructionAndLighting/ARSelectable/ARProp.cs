@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Collections;
 
 public class ARProp : ARSelectable {
 
@@ -15,6 +16,7 @@ public class ARProp : ARSelectable {
 
     public float _Metallic = 0.5f;
     public float _Smoothness = 0.5f;
+    public bool _UsePhysics = true;
 
     public override void Start()
     {
@@ -29,11 +31,16 @@ public class ARProp : ARSelectable {
         {
             foreach (var m in r.materials)
             {
-                if(m.shader.name == "Standard" && m.GetTexture("_MetallicGlossMap") == null)
+                if((m.shader.name == "Standard" || m.shader.name == "Tango/Environmental Lighting/Standard") &&
+                    m.GetTexture("_MetallicGlossMap") == null)
                     pbrMat.Add(m);
             }
         }
         _PBRMaterials = pbrMat.ToArray();
+
+        // Objects without a Rigidbody component will never use physics.
+        _UsePhysics &= (transform.GetComponent<Rigidbody>() != null); 
+        _ui._TogglePhysics.isOn = _UsePhysics;
     }
 
     public override void MakeSelected()
@@ -44,6 +51,17 @@ public class ARProp : ARSelectable {
         _ui.Reset();
         _ui._DestroyButton.onClick.AddListener(delegate { this.OnDestoyClick(); });
         _ui._ButtonMove.onClick.AddListener(this.OnClickMove);
+
+        if (transform.GetComponent<Rigidbody>() != null)
+        {
+            _ui._TogglePhysics.interactable = true;
+            _ui._TogglePhysics.onValueChanged.AddListener(onValueChangedPhysics);
+            _ui._TogglePhysics.isOn = _UsePhysics;
+        }
+        else
+        {
+            _ui._TogglePhysics.interactable = false;
+        }
 
         if (_PBRMaterials.Length > 0)
         {
@@ -77,6 +95,37 @@ public class ARProp : ARSelectable {
         foreach (var m in _PBRMaterials)
         {
             m.SetFloat("_Glossiness", _Smoothness);
+        }
+    }
+
+    private void onValueChangedPhysics(bool value) {
+        _UsePhysics = value;
+        transform.GetComponent<Rigidbody>().isKinematic = !_UsePhysics;
+    }
+
+    protected override IEnumerator doMoving()
+    {
+        MessageManager._MessageManager.PushMessage("Tap screen to finish.", 2f);
+
+        GameGlobals.MovingObject = true;
+        GameGlobals.SetPropertiesOpen(false);
+        transform.SetParent(Camera.main.transform);
+        if (transform.GetComponent<Rigidbody>() != null)
+            transform.GetComponent<Rigidbody>().isKinematic = true;
+
+        while (GameGlobals.MovingObject)
+        {
+            yield return null;
+        }
+
+        GameGlobals.SetPropertiesOpen(true);
+        transform.SetParent(ARObjectManager._AROBJManager.transform);
+
+        if (_UsePhysics)
+        {
+            // This 'if' statement needed to prevent the following line from executing
+            // objects without a Rigidbody component.
+            transform.GetComponent<Rigidbody>().isKinematic = !_UsePhysics;
         }
     }
 

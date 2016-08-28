@@ -74,15 +74,6 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
     /// </summary>
     private const int NUM_OBSERVATIONS_TO_COMPLETE = 25;
 
-    public void UpdateShadowCastingMode(ShadowCastingMode sMode)
-    {
-        var list = GetComponentsInChildren<Renderer>();
-        foreach (var item in list)
-        {
-            item.shadowCastingMode = sMode;
-        }
-    }
-
     /// <summary>
     /// Used for selective meshing, byte representation of the completed observation directions.
     /// 
@@ -327,10 +318,10 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
     }
 
     /// <summary>
-    /// Exports the constructed mesh to a Wavefront OBJ file format. The file will include info
+    /// Exports the constructed mesh to an OBJ file format. The file will include info
     /// based on the enabled options in TangoApplication.
     /// </summary>
-    /// <param name="filepath">Filepath to output the OBJ.</param>
+    /// <param name="filepath">File path to output the OBJ.</param>
     public void ExportMeshToObj(string filepath)
     {
         AndroidHelper.ShowAndroidToastMessage("Exporting mesh...");
@@ -343,16 +334,11 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             int meshVertices = 0;
             sb.Append(string.Format("g {0}\n", tmesh.name));
 
-
             // Vertices.
             for (int i = 0; i < mesh.vertices.Length; i++)
             {
                 meshVertices++;
                 Vector3 v = tmesh.transform.TransformPoint(mesh.vertices[i]);
-
-
-                //sb.Append(string.Format("v {0} {1} {2} 1.0\n", v.x, v.y, -v.z));
-                //continue;
 
                 // Include vertex colors as part of vertex point for applications that support it.
                 if (mesh.colors32.Length > 0)
@@ -386,7 +372,6 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             {
                 foreach (Vector3 uv in mesh.uv)
                 {
-
                     sb.Append(string.Format("vt {0} {1}\n", uv.x, uv.y));
                 }
 
@@ -397,7 +382,6 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
             int[] triangles = mesh.triangles;
             for (int j = 0; j < triangles.Length; j += 3)
             {
-
                 sb.Append(string.Format("f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n", triangles[j + 2] + 1 + startVertex, triangles[j + 1] + 1 + startVertex, triangles[j] + 1 + startVertex));
             }
 
@@ -440,7 +424,7 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
     /// <summary>
     /// Gets the highest point on the dynamic mesh through at a given position.
     /// 
-    /// Performs raycasts on a subset of TangoSingleDynamicMesh colliders and finds the highest point. The subset
+    /// Raycast against a subset of TangoSingleDynamicMesh colliders and find the highest point. The subset
     /// is defined by all the meshes intersected by a downward-pointing ray that passes through a position.
     /// </summary>
     /// <returns>The highest raycast hit point.</returns>
@@ -509,7 +493,7 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
     /// Extract and update (or create, if it doesn't exist) the mesh at the given grid index.
     /// </summary>
     /// <param name="gridIndex">Grid index.</param>
-    /// <param name="needsResize">List to which indicies needing a future resize will be added.</param>
+    /// <param name="needsResize">List to which indices needing a future resize will be added.</param>
     private void _UpdateMeshAtGridIndex(Tango3DReconstruction.GridIndex gridIndex, List<Tango3DReconstruction.GridIndex> needsResize)
     {
         TangoSingleDynamicMesh dynamicMesh;
@@ -921,25 +905,25 @@ public class TangoDynamicMesh : MonoBehaviour, ITango3DReconstruction
         public bool m_needsToGrow;
 
         /// <summary>
-        /// Cache for Mesh.vertices.
+        /// Cache for <c>Mesh.vertices</c>.
         /// </summary>
         [HideInInspector]
         public Vector3[] m_vertices;
 
         /// <summary>
-        /// Cache for Mesh.uv.
+        /// Cache for <c>Mesh.uv</c>.
         /// </summary>
         [HideInInspector]
         public Vector2[] m_uv;
 
         /// <summary>
-        /// Cache for Mesh.colors.
+        /// Cache for <c>Mesh.colors</c>.
         /// </summary>
         [HideInInspector]
         public Color32[] m_colors;
 
         /// <summary>
-        /// Cache to Mesh.triangles.
+        /// Cache to <c>Mesh.triangles</c>.
         /// </summary>
         [HideInInspector]
         public int[] m_triangles;

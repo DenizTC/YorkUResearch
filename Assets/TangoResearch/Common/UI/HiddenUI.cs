@@ -50,9 +50,13 @@ public class HiddenUI : MonoBehaviour {
         GameGlobals.CanvasEnabled = !GameGlobals.CanvasEnabled;
         _MainUI.enabled = GameGlobals.CanvasEnabled;
 
-        _mainCam.cullingMask = (GameGlobals.CanvasEnabled) ?
-            _mainCam.cullingMask + (1 << GameGlobals.WaypointLayer) :
-            _mainCam.cullingMask - (1 << GameGlobals.WaypointLayer);
+        //_mainCam.cullingMask = (GameGlobals.CanvasEnabled) ?
+        //    _mainCam.cullingMask + (1 << GameGlobals.WaypointLayer) :
+        //    _mainCam.cullingMask - (1 << GameGlobals.WaypointLayer);
+
+        Camera.main.cullingMask = (GameGlobals.CanvasEnabled) ?
+            Camera.main.cullingMask + (1 << GameGlobals.WaypointLayer) :
+            Camera.main.cullingMask - (1 << GameGlobals.WaypointLayer);
     }
 
 
