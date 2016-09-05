@@ -40,8 +40,13 @@ public class GUISelectables : MonoBehaviour {
     /// <param name="objManagerIndex">Index of the item in object manager.</param>
     /// <param name="value">The toggled state of this toggle button.</param>
     private void onToggleChanged(int objManagerIndex, bool value) {
+        GUILightDetector._GUILD._ButtonStartFinishLightDet.gameObject.SetActive(false);
         if (value) {
             GameGlobals.CurrentARSelectableIndex = objManagerIndex;
+            Debug.Log(ARObjectManager._AROBJManager.CurrentSelectionType().ToString());
+            if (ARObjectManager._AROBJManager.CurrentSelectionType() == Enums.SelectionType.POINT_LIGHT) {
+                GUILightDetector._GUILD._ButtonStartFinishLightDet.gameObject.SetActive(true);
+            }
         }
     }
 

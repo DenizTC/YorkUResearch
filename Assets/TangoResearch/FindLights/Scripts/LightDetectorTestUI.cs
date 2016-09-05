@@ -8,7 +8,6 @@ public class LightDetectorTestUI : MonoBehaviour {
 
     public Button _ButtonStartFinish;
     public Text _TextStartFinish;
-    private bool _running = true;
 
 	void Start () {
         _ButtonStartFinish.onClick.AddListener(onClickStartFinish);
@@ -16,17 +15,15 @@ public class LightDetectorTestUI : MonoBehaviour {
 
     private void onClickStartFinish()
     {
-        _running = !_running;
-
-        _TextStartFinish.text = (_running) ? "Finish" : "Start";
-        if (_running)
+        if (!FindLight._LightDetector.IsRunning())
         {
             FindLight._LightDetector.TurnOn();
+            _TextStartFinish.text = "Finish";
         }
         else
         {
-            List<ColorPoint> cp;
-            FindLight._LightDetector.TurnOff(out cp);
+            List<ColorPoint> cp = FindLight._LightDetector.TurnOff();
+            _TextStartFinish.text = "Start";
         }
     }
 }

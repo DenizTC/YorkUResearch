@@ -16,7 +16,7 @@ public class AREnemy : ARSelectable
     public override void Start()
     {
         base.Start();
-        this._SelectableType = Enums.SelectionType.ENEMY;
+        //this._SelectableType = Enums.SelectionType.ENEMY;
 
         _ui = GUIProperties._Properties._PanelEnemy;
 
@@ -56,4 +56,10 @@ public class AREnemy : ARSelectable
         _Size = value;
         transform.localScale = new Vector3(_Size, _Size, _Size);
     }
+
+    public override Enums.SelectionType GetSelectionType()
+    {
+        return Enums.SelectionType.ENEMY;
+    }
+
 }

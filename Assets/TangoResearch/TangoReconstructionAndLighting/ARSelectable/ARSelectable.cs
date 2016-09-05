@@ -3,7 +3,7 @@ using System.Collections;
 
 public abstract class ARSelectable : MonoBehaviour {
 
-    protected Enums.SelectionType _SelectableType;
+    //protected Enums.SelectionType _SelectableType;
 
     /// <summary>
     /// The time in seconds before the object is destroyed. 
@@ -21,6 +21,8 @@ public abstract class ARSelectable : MonoBehaviour {
             Destroy(transform.gameObject, _LifeTime);
         }
     }
+
+    public abstract Enums.SelectionType GetSelectionType();
 
     public virtual void MakeSelected() {
         if (!GameGlobals.PropertiesPanelOpen)

@@ -22,7 +22,7 @@ public class ARProp : ARSelectable {
     {
         base.Start();
 
-        this._SelectableType = Enums.SelectionType.PROP;
+        //this._SelectableType = Enums.SelectionType.PROP;
 
         _ui = GUIProperties._Properties._PanelProp;
 
@@ -161,4 +161,9 @@ public class ARProp : ARSelectable {
         return materials;
     }
 
+
+    public override Enums.SelectionType GetSelectionType()
+    {
+        return Enums.SelectionType.PROP;
+    }
 }

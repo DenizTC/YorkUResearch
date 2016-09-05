@@ -312,6 +312,12 @@ namespace Tango
                 return;
             }
 
+            if (pointCloud.m_numPoints <= 0)
+            {
+                return;
+
+            }
+
             // Build World T depth camera
             TangoPoseData world_T_devicePose = new TangoPoseData();
             if (m_useAreaDescriptionPose)

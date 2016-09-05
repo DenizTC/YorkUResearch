@@ -237,7 +237,15 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
         m_selectedPrefab = null;
     }
 
-    public void InstantiateARObject(Vector3 pos, Quaternion rot) {
+    public Enums.SelectionType CurrentSelectionType() {
+        if (!GUISelectables._GUISelectables.IsAnyToggled())
+            return Enums.SelectionType.NONE;
+        Debug.Log(GameGlobals.CurrentARSelectableIndex);
+        int index = _arObjMap[GameGlobals.CurrentARSelectableIndex];
+        return _ARObjects[index].GetComponent<ARSelectable>().GetSelectionType();
+    }
+
+    public ARSelectable InstantiateARObject(Vector3 pos, Quaternion rot) {
         int index = _arObjMap[GameGlobals.CurrentARSelectableIndex];
 
         ARSelectable newARO =
@@ -252,6 +260,7 @@ public class ARObjectManager : MonoBehaviour, ITangoDepth
             newARO.transform.GetComponent<Rigidbody>().angularVelocity = 
                 new Vector3(GameGlobals.Rand.Next(0,45), GameGlobals.Rand.Next(0, 45), GameGlobals.Rand.Next(0, 45));
         }
+        return newARO;
     }
 
 }

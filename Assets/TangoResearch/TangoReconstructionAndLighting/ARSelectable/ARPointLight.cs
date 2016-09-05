@@ -16,7 +16,7 @@ public class ARPointLight : ARSelectable {
     public override void Start() {
         base.Start();
 
-        this._SelectableType = Enums.SelectionType.POINT_LIGHT;
+        //this._SelectableType = Enums.SelectionType.POINT_LIGHT;
 
         _ui = GUIProperties._Properties._PanelARPointLight;
 
@@ -72,4 +72,8 @@ public class ARPointLight : ARSelectable {
         _ui._ColorPicker.CurrentColor = _color;
     }
 
+    public override Enums.SelectionType GetSelectionType()
+    {
+        return Enums.SelectionType.POINT_LIGHT;
+    }
 }

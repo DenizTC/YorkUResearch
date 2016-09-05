@@ -158,7 +158,6 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
         }
 
         _UpdateLocationMarker();
-        _UpdateLocationMarkerMouse();
 
         if (Input.GetKey(KeyCode.Escape))
         {
@@ -233,7 +232,7 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
             Renderer selectedRenderer = m_selectedMarker.GetComponent<Renderer>();
 
             // GUI's Y is flipped from the mouse's Y
-            Rect screenRect = WorldBoundsToScreen(_MainCam, selectedRenderer.bounds);
+            Rect screenRect = WorldBoundsToScreen(Camera.main, selectedRenderer.bounds);
             float yMin = Screen.height - screenRect.yMin;
             float yMax = Screen.height - screenRect.yMax;
             screenRect.yMin = Mathf.Min(yMin, yMax);
@@ -449,7 +448,7 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
             // Single tap -- place new location or select existing location.
             Touch t = Input.GetTouch(0);
             Vector2 guiPosition = new Vector2(t.position.x, Screen.height - t.position.y);
-            Camera cam = _MainCam;
+            Camera cam = Camera.main;
             RaycastHit hitInfo;
 
             if (t.phase != TouchPhase.Began)
@@ -508,48 +507,6 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
         }
     }
 
-    private void _UpdateLocationMarkerMouse()
-    {
-        if (Input.GetMouseButtonUp(1))
-        {
-            Vector3 t = Input.mousePosition;
-            Vector2 guiPosition = new Vector2(t.x, Screen.height - t.y);
-            Camera cam = _MainCam;
-            RaycastHit hitInfo;
-
-            if (m_selectedRect.Contains(guiPosition) || m_hideAllRect.Contains(guiPosition))
-            {
-                // do nothing, the button will handle it
-            }
-            else if (Physics.Raycast(cam.ScreenPointToRay(t), out hitInfo))
-            {
-                // Found a marker, select it (so long as it isn't disappearing)!
-                GameObject tapped = hitInfo.collider.gameObject;
-                if (!tapped.GetComponent<Animation>().isPlaying)
-                {
-                    m_selectedMarker = tapped.GetComponent<ARMarker>();
-                }
-            }
-            else
-            {
-                // Place a new point at that location, clear selection
-                m_selectedMarker = null;
-                StartCoroutine(_WaitForDepthAndFindPlane(t));
-
-                // Because we may wait a small amount of time, this is a good place to play a small
-                // animation so the user knows that their input was received.
-                RectTransform touchEffectRectTransform = (RectTransform)Instantiate(m_prefabTouchEffect);
-                touchEffectRectTransform.transform.SetParent(m_canvas.transform, false);
-                Vector2 normalizedPosition = t;
-                normalizedPosition.x /= Screen.width;
-                normalizedPosition.y /= Screen.height;
-                touchEffectRectTransform.anchorMin = touchEffectRectTransform.anchorMax = normalizedPosition;
-            }
-        }
-    }
-
-
-    public Camera _MainCam;
     /// <summary>
     /// Wait for the next depth update, then find the plane at the touch position.
     /// </summary>
@@ -569,18 +526,7 @@ public class ARGUIController : MonoBehaviour, ITangoLifecycle, ITangoDepth
         m_tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
 
         // Find the plane.
-        Camera cam = _MainCam;
-
-        //int idx = m_pointCloud.FindClosestPoint(cam, touchPosition, 10);
-        //if (idx == -1)
-        //{
-        //    yield break;
-        //}
-        //Vector3 point = m_pointCloud.m_points[idx];
-        //GameObject newGO =
-        //    Instantiate(m_prefabMarker.gameObject, point, Quaternion.identity) as GameObject;
-        //yield break;
-
+        Camera cam = Camera.main;
         Vector3 planeCenter;
         Plane plane;
         if (!m_pointCloud.FindPlane(cam, touchPosition, out planeCenter, out plane))

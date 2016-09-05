@@ -64,7 +64,7 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
     private float _Threshold = 0.65f;
     private int _SpotSize = 10;
     private TangoUnityImageData _lastImageBuffer = null;
-    private bool _isOn = true;
+    private bool _isOn = false;
     private List<ColorPoint> _foundLights = new List<ColorPoint>();
     private List<GameObject> _foundLightsPlaceholder = new List<GameObject>();
     /// <summary>
@@ -82,12 +82,13 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
         
 
         _tangoApplication = FindObjectOfType<TangoApplication>();
-        if (_tangoApplication != null)
-        {
-            _tangoApplication.Register(_LightDetector);
-        }
+        //if (_tangoApplication != null)
+        //{
+        //    _tangoApplication.Register(_LightDetector);
+        //}
 
-        _ButtonCreateLight.onClick.AddListener(onClickCreateLight);
+        if(_ButtonCreateLight)
+            _ButtonCreateLight.onClick.AddListener(onClickCreateLight);
 
         _SliderThreshold.value = _Threshold;
         _SliderSpotSize.value = _SpotSize / 10;
@@ -96,7 +97,10 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
         
 
         _OutTexture = new Texture2D(1280 / 8, 720 / 8);
-	}
+
+        transform.gameObject.SetActive(false);
+        //TurnOff();
+    }
 
     void Update()
     {
@@ -144,23 +148,23 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
         MessageManager._MessageManager.PushMessage("Tap screen to place light source.", 3);
     }
 
-    public void TurnOff(out List<ColorPoint> foundPoints) {
+    public List<ColorPoint> TurnOff() {
         if (!_isOn) {
-            foundPoints = null;    
-            return;
+            return new List<ColorPoint>();
         }
 
         _isOn = false;
         _tangoApplication.Unregister(_LightDetector);
+        if (!_tangoApplication.m_enable3DReconstruction)
+            _tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
         StopAllCoroutines();
         for (int i = 0; i < _foundLightsPlaceholder.Count; i++)
         {
             Destroy(_foundLightsPlaceholder[i]);
         }
-        if (!_tangoApplication.m_enable3DReconstruction)
-            _tangoApplication.SetDepthCameraRate(TangoEnums.TangoDepthCameraRate.DISABLED);
-        foundPoints = _foundLights;
+        
         transform.gameObject.SetActive(false);
+        return _foundLights;
     }
 
     public bool IsRunning() {
@@ -274,13 +278,6 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
         brightestPixel.X = tempBrightest.X;
         brightestPixel.Y = tempBrightest.Y;
 
-        //for (int w = -3; w < 3; w++)
-        //{
-        //    for (int h = -3; h < 3; h++)
-        //    {
-        //        outTexture.SetPixel(brightestPixelUV[0] + w, brightestPixelUV[1] + h, Color.green);
-        //    }
-        //}
         ColorPoint ave = new ColorPoint();
         int count = 0;
         foreach (ColorPoint p in brightSpots)

@@ -14,7 +14,7 @@ public class ARAmbientLight : ARSelectable {
     public override void Start()
     {
         base.Start();
-        this._SelectableType = Enums.SelectionType.AMBIENT_LIGHT;
+        //this._SelectableType = Enums.SelectionType.AMBIENT_LIGHT;
 
         if (!_SceneAmbientLight)
             _SceneAmbientLight = this;
@@ -55,6 +55,11 @@ public class ARAmbientLight : ARSelectable {
 
         _ui._IntensitySlider.value = _intensity;
         _ui._ColorPicker.CurrentColor = _color;
+    }
+
+    public override Enums.SelectionType GetSelectionType()
+    {
+        return Enums.SelectionType.AMBIENT_LIGHT;
     }
 
 }

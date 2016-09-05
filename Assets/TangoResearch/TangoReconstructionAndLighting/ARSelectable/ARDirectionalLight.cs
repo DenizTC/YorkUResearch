@@ -15,7 +15,7 @@ public class ARDirectionalLight : ARSelectable {
     public override void Start()
     {
         base.Start();
-        this._SelectableType = Enums.SelectionType.DIRECTIONAL_LIGHT;
+        //this._SelectableType = Enums.SelectionType.DIRECTIONAL_LIGHT;
 
         if (!_Sun)
             _Sun = this;
@@ -86,6 +86,11 @@ public class ARDirectionalLight : ARSelectable {
         _ui._IntensitySlider.value = _lightIntensity;
         _ui._ShadowIntensitySlider.value = _shadowIntensity;
         _ui._ColorPicker.CurrentColor = _color;
+    }
+
+    public override Enums.SelectionType GetSelectionType()
+    {
+        return Enums.SelectionType.DIRECTIONAL_LIGHT;
     }
 
 }
