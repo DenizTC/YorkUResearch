@@ -377,6 +377,9 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
         _lastImageBuffer = imageBuffer;
         if (_Continuous)
         {
+            float aveLuma = TangoImageProcessing.AverageLuminescence(imageBuffer);
+            _SliderThreshold.value = aveLuma + (1 - aveLuma) / 1.25f;
+            Debug.Log(_Threshold);
             ColorPoint p;
             if (FindBrightSpots(_lastImageBuffer, ref _OutTexture, _Threshold, _SpotSize, out p))
             {
