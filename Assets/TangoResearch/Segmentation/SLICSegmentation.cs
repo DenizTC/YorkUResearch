@@ -73,9 +73,72 @@ public class SLICSegmentation : MonoBehaviour
     // SuperPixel center at every grid interval S = sqrt(N / K).
     private float S = 0f;
 
-    public static Vector3 RGBToCIELAB(Vector3 rgb)
+    /// <summary>
+    /// Converts RGB to XYZ.
+    /// Source: http://www.easyrgb.com/index.php?X=MATH&H=02#text2
+    /// </summary>
+    /// <param name="rgb">The normalized RGB color.</param>
+    /// <returns>Normalized XYZ color.</returns>
+    public static Vector3 RGBToXYZ(Vector3 rgb)
     {
-        throw new NotImplementedException();
+        float r = rgb.x;
+        float g = rgb.y;
+        float b = rgb.z;
+
+        if (r > 0.04045)
+            r = Mathf.Pow(((r + 0.055f) / 1.055f), 2.4f);
+        else
+            r /= 12.92f;
+
+        if (g > 0.04045)
+            g = Mathf.Pow(((g + 0.055f) / 1.055f), 2.4f);
+        else
+            g /= 12.92f;
+
+        if (b > 0.04045)
+            b = Mathf.Pow(((b + 0.055f) / 1.055f), 2.4f);
+        else
+            b /= 12.92f;
+
+        //r = r * 100f;
+        //g = g * 100f;
+        //b = b * 100f;
+
+        //Observer. = 2°, Illuminant = D65
+        float R = r * 0.4124f + g * 0.3576f + b * 0.1805f;
+        float G = r * 0.2126f + g * 0.7152f + b * 0.0722f;
+        float B = r * 0.0193f + g * 0.1192f + b * 0.9505f;
+
+        return new Vector3(R, G, B);
+    }
+
+    public static Vector3 XYZToCIELAB(Vector3 xyz)
+    {
+        float x = xyz.x*100f / 95.047f;     //ref_X =  95.047   Observer= 2°, Illuminant= D65
+        float y = xyz.y*100f / 100.0f;      //ref_Y = 100.000
+        float z = xyz.z*100f / 108.883f;    //ref_Z = 108.883
+
+        if (x > 0.008856f)
+            x = Mathf.Pow(x, (1 / 3f));
+        else
+            x = (7.787f * x) + (16 / 116f);
+
+        if (y > 0.008856f)
+            y = Mathf.Pow(y, (1 / 3f));
+        else
+            y = (7.787f * y) + (16 / 116f);
+
+        if (z > 0.008856f)
+            z = Mathf.Pow(z, (1 / 3f));
+        else
+            z = (7.787f * z) + (16 / 116f);
+
+
+        float l = (116 * y) - 16;
+        float a = 500 * (x - y);
+        float b = 200 * (y - z);
+
+        return new Vector3(l, a, b);
     }
 
     public static float Distance(CIELABXY cA, CIELABXY cB, float S, out float dlab, out float dxy, int compactness = 10)
@@ -145,10 +208,12 @@ public class SLICSegmentation : MonoBehaviour
 
                 Vector3 yuv = TangoHelpers.GetYUV(imageBuffer, jS, iS);
                 Vector3 rgb = TangoHelpers.YUVToRGB(yuv);
+                Vector3 XYZ = RGBToXYZ(rgb);
+                Vector3 LAB = XYZToCIELAB(XYZ);
 
-                pixel5Ds.Add(new CIELABXY(rgb, jS, iS));
+                pixel5Ds.Add(new CIELABXY(XYZ, jS, iS));
                 if ((i % (int)S == 0) && (j % (int)S == 0)){
-                    clusterCenters.Add(new CIELABXYCenter(rgb, jS, iS));
+                    clusterCenters.Add(new CIELABXYCenter(XYZ, jS, iS));
                 }
 
             }
@@ -275,9 +340,11 @@ public class SLICSegmentation : MonoBehaviour
             }
             
             residualError = ComputeNewClusterCenters(ref clusterCenters);
-            Debug.Log("ResidualError " + residualError);
+            //Debug.Log("ResidualError " + residualError);
             count--;
-        } while (residualError > residualErrorThreshold);
+        }
+        while (count > 0);
+        //while (residualError > residualErrorThreshold);
 
         //EnforeConnectivity();
 

@@ -54,7 +54,7 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, 2, _ResDiv, 100);
 
         int count = 0;
-        float weight = 0.6f;
+        float weight = 0.5f;
         foreach (CIELABXYCenter c in clusterCenters)
         {
 
@@ -69,9 +69,13 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
 
 
                 _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
-                    new Color(cR.L * weight + _regionColors[count].r * (1 - weight), 
-                    cR.A * weight + _regionColors[count].g * (1 - weight), 
-                    cR.B * weight + _regionColors[count].b * (1 - weight)));
+                    new Color(cR.L * weight + _regionColors[count].r * (1 - weight),
+                              cR.A * weight + _regionColors[count].g * (1 - weight),
+                              cR.B * weight + _regionColors[count].b * (1 - weight)));
+                //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
+                //    new Color(_regionColors[count].r * (1 - weight),
+                //    _regionColors[count].g * (1 - weight),
+                //    _regionColors[count].b * (1 - weight)));
                 //_OutTexture.SetPixel(cR.X / 8, _OutTexture.height - cR.Y / 8, new Color(cR.L, cR.A, cR.B));
                 //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(c.L, c.A, c.B));
 
