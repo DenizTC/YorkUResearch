@@ -59,6 +59,10 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
 
     public int _Compactness = 10;
 
+    public float _ErrorThreshold = 0.001f;
+
+    public int _MaxIterations = 10;
+
     private Dictionary<int, Color> _regionColors = new Dictionary<int, Color>();
     
     public Material _ResultMat;
@@ -79,8 +83,11 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         tempTex.filterMode = FilterMode.Point;
         tempTex.mipMapBias = 0;
 
-        _SLIC.MaxIterations = 1;
-        _SLIC.ResidualErrorThreshold = 0.02f;
+        _SLIC = new SLICSegmentation();
+        _SLIC.MaxIterations = _MaxIterations;
+        _SLIC.ResidualErrorThreshold = _ErrorThreshold;
+        _SLIC.ResDiv = _ResDiv;
+        _SLIC.Compactness = _Compactness;
     }
 
     public static Color RandomColor()
@@ -96,7 +103,7 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
     {
         _lastImageBuffer = imageBuffer;
 
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, _ResDiv, _ClusterCount);
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, _ClusterCount);
 
         int count = 0;
         foreach (CIELABXYCenter c in clusterCenters)
