@@ -51,6 +51,8 @@ public class CIELABXYCenter : CIELABXY
 {
     public List<CIELABXY> Region = new List<CIELABXY>();
 
+    public float ResidualError = float.MaxValue;
+
     public CIELABXYCenter() : base() {
     }
 
@@ -70,9 +72,12 @@ public class CIELABXYCenter : CIELABXY
 
 public class SLICSegmentation : MonoBehaviour
 {
-
     // SuperPixel center at every grid interval S = sqrt(N / K).
     private float S = 0f;
+
+    public float ResidualErrorThreshold = 1f;
+
+    public int MaxIterations = 4;
 
     /// <summary>
     /// Converts RGB to XYZ.
@@ -185,6 +190,8 @@ public class SLICSegmentation : MonoBehaviour
             ave.X += c.X;
             ave.Y += c.Y;
         }
+
+
         ave.L /= pixels5D.Count;
         ave.A /= pixels5D.Count;
         ave.B /= pixels5D.Count;
@@ -209,7 +216,6 @@ public class SLICSegmentation : MonoBehaviour
             ((float)superPixelCount);
 
         S = Mathf.Sqrt(spSize);
-        //Debug.Log("S: " + S);
 
         int wS = (int)(imageBuffer.width / (float)resDiv);
         int hS = (int)(imageBuffer.height / (float)resDiv);
@@ -223,10 +229,10 @@ public class SLICSegmentation : MonoBehaviour
 
                 Vector3 yuv = TangoHelpers.GetYUV(imageBuffer, jS, iS);
                 Vector3 rgb = TangoHelpers.YUVToRGB(yuv);
-                Vector3 XYZ = RGBToXYZ(rgb);
-                Vector3 LAB = XYZToCIELAB(XYZ);
+                //Vector3 XYZ = RGBToXYZ(rgb);
+                //Vector3 LAB = XYZToCIELAB(XYZ);
 
-                CIELABXY c = new CIELABXY(LAB, jS, iS);
+                CIELABXY c = new CIELABXY(rgb, jS, iS);
                 c.RGB = rgb;
 
                 pixel5Ds.Add(c);
@@ -236,8 +242,6 @@ public class SLICSegmentation : MonoBehaviour
 
             }
         }
-
-        //Debug.Log("Pixel count: " + pixel5Ds.Count + " Ck count: " + clusterCenters.Count);
 
     }
 
@@ -262,14 +266,15 @@ public class SLICSegmentation : MonoBehaviour
 
     public void AssignToNearestClusterCenter(ref List<CIELABXYCenter> clusterCenters,
         CIELABXY p,
-        out float dlabSmallest,
         int resDiv = 8)
     {
-        dlabSmallest = 0;
         int newClusterCenterIdx = -1;
         float smallestDiff = float.MaxValue;
         for (int i = 0; i < clusterCenters.Count; i++)
         {
+
+            if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
+                continue;
 
             float dlab = 0;
             float dxy = 0;
@@ -287,21 +292,14 @@ public class SLICSegmentation : MonoBehaviour
                     smallestDiff = ds;
                     newClusterCenterIdx = i;
                 }
-                dlabSmallest = ds;
             } // If cur pixel within search space of cur Ck
             
         } // Foreach Ck
-        //Debug.Log("Smallest diff: " + dst);
+
         if (newClusterCenterIdx >= 0)
         {
             clusterCenters[newClusterCenterIdx].Region.Add(p);
             p.label = clusterCenters[newClusterCenterIdx].GetHashCode();
-            dlabSmallest = smallestDiff;
-        }
-        else
-        {
-            //Debug.Log("Smallest diff: " + smallestDiff + " ds: " + dlabSmallest);
-
         }
     }
 
@@ -312,22 +310,26 @@ public class SLICSegmentation : MonoBehaviour
         List<CIELABXYCenter> newClusterCenters = new List<CIELABXYCenter>();
 
         float dlabSum = 0, dxySum = 0;
+        int count = 0;
         for (int i = 0; i < clusterCenters.Count; i++)
         {
+            if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
+                continue;
+
             float dlab, dxy;
+            float curResError = 0;
             CIELABXYCenter newClusterCenter = GetAverage(clusterCenters[i].Region);
-            residualError += Distance(clusterCenters[i], newClusterCenter, S, out dlab, out dxy);
+            curResError += Distance(clusterCenters[i], newClusterCenter, S, out dlab, out dxy);
+            newClusterCenter.ResidualError = curResError;
             newClusterCenter.Region = clusterCenters[i].Region;
             clusterCenters[i] = newClusterCenter;
 
             dlabSum += dlab;
             dxySum += dxy;
+            residualError += newClusterCenter.ResidualError;
+            count++;
         }
-
-        //dlabSum /= clusterCenters.Count;
-        //dxySum /= clusterCenters.Count;
-        //residualError /= clusterCenters.Count;
-        //Debug.Log("Center count:" + clusterCenters.Count + " dlab:" + dlabSum + " dxy:" + dxySum + " residualError:" + residualError);
+        residualError /= count;
         return residualError;
     }
 
@@ -336,33 +338,28 @@ public class SLICSegmentation : MonoBehaviour
         throw new NotImplementedException();
     }
 
-    public List<CIELABXYCenter> RunSLICSegmentation(TangoUnityImageData imageBuffer, 
-        float residualErrorThreshold, 
+    public List<CIELABXYCenter> RunSLICSegmentation(TangoUnityImageData imageBuffer,
         int resDiv = 8,
         int clusterCount = 32)
     {
-        float residualError = 0;
+        float residualError = float.MaxValue;
         List<CIELABXY> pixel5Ds;
         List<CIELABXYCenter> clusterCenters;
         InitClusterCenters(imageBuffer, out clusterCenters, out pixel5Ds, clusterCount, resDiv);
         //PertubClusterCentersToLowestGradient(imageBuffer, ref clusterCenters);
 
-        int count = 2;
-        do
+        int count = MaxIterations;
+        while (count > 0)
         {
-            float dlabSmallestSum = 0;
             for (int i = 0; i < pixel5Ds.Count; i++)
             {
-                AssignToNearestClusterCenter(ref clusterCenters, pixel5Ds[i], out dlabSmallestSum, resDiv);
+                AssignToNearestClusterCenter(ref clusterCenters, pixel5Ds[i], resDiv);
 
             }
-            
             residualError = ComputeNewClusterCenters(ref clusterCenters);
             //Debug.Log("ResidualError " + residualError);
             count--;
         }
-        //while (count > 0);
-        while (residualError > residualErrorThreshold);
 
         //EnforeConnectivity();
 

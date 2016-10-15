@@ -3,6 +3,45 @@ using System.Collections;
 using Tango;
 using System.Collections.Generic;
 
+public class VectorInt2
+{
+    public int X;
+    public int Y;
+
+    public VectorInt2()
+    {
+    }
+
+    public VectorInt2(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public override bool Equals(object obj)
+    {
+        // Check for null values and compare run-time types.
+        if (obj == null || GetType() != obj.GetType())
+            return false;
+
+        VectorInt2 p = (VectorInt2)obj;
+        return (X == p.X) && (Y == p.Y);
+    }
+
+    public override int GetHashCode()
+    {
+        return X ^ Y;
+        //unchecked // Overflow is fine, just wrap
+        //{
+        //    int hash = 17;
+        //    // Suitable nullity checks etc, of course :)
+        //    hash = hash * 23 + X.GetHashCode();
+        //    hash = hash * 23 + Y.GetHashCode();
+        //    return hash;
+        //}
+    }
+}
+
 public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle
 {
 
@@ -30,10 +69,6 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         {
             _tangoApplication.Register(this);
         }
-        //_OutTexture = new Texture2D(1280 / 8, 720 / 8);
-
-        //_OutTexture.filterMode = FilterMode.Point;
-        //_OutTexture.anisoLevel = 0;
 
         for (int i = 0; i < _ClusterCount; i++)
         {
@@ -43,6 +78,9 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         tempTex = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
         tempTex.filterMode = FilterMode.Point;
         tempTex.mipMapBias = 0;
+
+        _SLIC.MaxIterations = 1;
+        _SLIC.ResidualErrorThreshold = 0.02f;
     }
 
     public static Color RandomColor()
@@ -58,42 +96,20 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
     {
         _lastImageBuffer = imageBuffer;
 
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, 2, _ResDiv, _ClusterCount);
-
-
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, _ResDiv, _ClusterCount);
 
         int count = 0;
-        float weight = 0f;
         foreach (CIELABXYCenter c in clusterCenters)
         {
-
-            //CIELABXYCenter ave = SLICSegmentation.GetAverage(c.Region);
             foreach (CIELABXY cR in c.Region)
             {
                 if (!_regionColors.ContainsKey(count))
                 {
                     _regionColors.Add(count, RandomColor());
                 }
-
-
                 _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(cR.RGB.x, cR.RGB.y, cR.RGB.z));
                 tempTex.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(_regionColors[count].r, _regionColors[count].g, _regionColors[count].b));
-                //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
-                //    new Color(cR.L * weight + _regionColors[count].r * (1 - weight),
-                //              cR.A * weight + _regionColors[count].g * (1 - weight),
-                //              cR.B * weight + _regionColors[count].b * (1 - weight)));
-
-
-
-                //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
-                //    new Color(_regionColors[count].r * (1 - weight),
-                //    _regionColors[count].g * (1 - weight),
-                //    _regionColors[count].b * (1 - weight)));
-                //_OutTexture.SetPixel(cR.X / 8, _OutTexture.height - cR.Y / 8, new Color(cR.L, cR.A, cR.B));
-
-
             }
-            //_OutTexture.SetPixel(c.X/ _ResDiv, _OutTexture.height - c.Y/ _ResDiv, new Color(1,0,0));
             count++;
         }
 
@@ -109,11 +125,7 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
             }
         }
 
-
-
-
         _OutTexture.Apply();
-
         _ResultMat.mainTexture = _OutTexture;
     }
 
