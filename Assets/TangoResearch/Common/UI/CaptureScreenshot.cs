@@ -43,7 +43,6 @@ public class CaptureScreenshot : MonoBehaviour {
 #else
             Application.CaptureScreenshot(fileName, 1);
 #endif
-
         MessageManager._MessageManager.PushMessage("Saved screenshot " + fileName);
     }
 

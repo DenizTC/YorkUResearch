@@ -17,8 +17,9 @@ public class CIELABXY
     public int X;
     public int Y;
 
+    public Vector3 RGB;
+
     public int label;
-    //public List<CIELABXY> Region = new List<CIELABXY>();
 
     public CIELABXY()
     {
@@ -138,6 +139,10 @@ public class SLICSegmentation : MonoBehaviour
         float a = 500 * (x - y);
         float b = 200 * (y - z);
 
+        l /= 100f;
+        a /= 100f;
+        b /= 100f;
+
         return new Vector3(l, a, b);
     }
 
@@ -153,9 +158,19 @@ public class SLICSegmentation : MonoBehaviour
         //return dLAB;
     }
 
-    public static float Gradient(Texture2D src, int x, int y)
+    public static float Gradient(TangoUnityImageData imageBuffer, int x, int y, int resDiv)
     {
-        throw new NotImplementedException();
+        Vector3 rgbLeft = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer, x-1*resDiv, y));
+        Vector3 rgbRight = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer, x+1*resDiv, y));
+
+        Vector3 rgbDown = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer,x, y - 1 * resDiv));
+        Vector3 rgbUp = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer,x, y + 1 * resDiv));
+
+        float horizontal = Mathf.Pow((rgbRight - rgbLeft).magnitude, 2);
+        float vertical = Mathf.Pow((rgbUp - rgbDown).magnitude, 2);
+
+        return horizontal + vertical;
+
     }
 
     public static CIELABXYCenter GetAverage(List<CIELABXY> pixels5D)
@@ -211,9 +226,12 @@ public class SLICSegmentation : MonoBehaviour
                 Vector3 XYZ = RGBToXYZ(rgb);
                 Vector3 LAB = XYZToCIELAB(XYZ);
 
-                pixel5Ds.Add(new CIELABXY(XYZ, jS, iS));
+                CIELABXY c = new CIELABXY(LAB, jS, iS);
+                c.RGB = rgb;
+
+                pixel5Ds.Add(c);
                 if ((i % (int)S == 0) && (j % (int)S == 0)){
-                    clusterCenters.Add(new CIELABXYCenter(XYZ, jS, iS));
+                    clusterCenters.Add(new CIELABXYCenter(c));
                 }
 
             }
@@ -329,7 +347,7 @@ public class SLICSegmentation : MonoBehaviour
         InitClusterCenters(imageBuffer, out clusterCenters, out pixel5Ds, clusterCount, resDiv);
         //PertubClusterCentersToLowestGradient(imageBuffer, ref clusterCenters);
 
-        int count = 4;
+        int count = 2;
         do
         {
             float dlabSmallestSum = 0;
@@ -343,8 +361,8 @@ public class SLICSegmentation : MonoBehaviour
             //Debug.Log("ResidualError " + residualError);
             count--;
         }
-        while (count > 0);
-        //while (residualError > residualErrorThreshold);
+        //while (count > 0);
+        while (residualError > residualErrorThreshold);
 
         //EnforeConnectivity();
 

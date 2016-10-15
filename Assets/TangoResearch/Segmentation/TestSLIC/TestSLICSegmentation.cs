@@ -14,9 +14,11 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
 
     public SLICSegmentation _SLIC;
 
-    public int _ResDiv = 32;
+    public int _ResDiv = 16;
 
-    public int _ClusterCount = 100;
+    public int _ClusterCount = 32;
+
+    public int _Compactness = 10;
 
     private Dictionary<int, Color> _regionColors = new Dictionary<int, Color>();
     
@@ -37,6 +39,10 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         {
             _regionColors.Add(i, RandomColor());
         }
+
+        tempTex = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
+        tempTex.filterMode = FilterMode.Point;
+        tempTex.mipMapBias = 0;
     }
 
     public static Color RandomColor()
@@ -47,14 +53,17 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         return col;
     }
 
+    Texture2D tempTex;
     public void OnTangoImageAvailableEventHandler(TangoEnums.TangoCameraId cameraId, TangoUnityImageData imageBuffer)
     {
         _lastImageBuffer = imageBuffer;
 
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, 2, _ResDiv, 100);
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, 2, _ResDiv, _ClusterCount);
+
+
 
         int count = 0;
-        float weight = 0.5f;
+        float weight = 0f;
         foreach (CIELABXYCenter c in clusterCenters)
         {
 
@@ -67,17 +76,20 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
                 }
 
 
+                _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(cR.RGB.x, cR.RGB.y, cR.RGB.z));
+                tempTex.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(_regionColors[count].r, _regionColors[count].g, _regionColors[count].b));
+                //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
+                //    new Color(cR.L * weight + _regionColors[count].r * (1 - weight),
+                //              cR.A * weight + _regionColors[count].g * (1 - weight),
+                //              cR.B * weight + _regionColors[count].b * (1 - weight)));
 
-                _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
-                    new Color(cR.L * weight + _regionColors[count].r * (1 - weight),
-                              cR.A * weight + _regionColors[count].g * (1 - weight),
-                              cR.B * weight + _regionColors[count].b * (1 - weight)));
+
+
                 //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv,
                 //    new Color(_regionColors[count].r * (1 - weight),
                 //    _regionColors[count].g * (1 - weight),
                 //    _regionColors[count].b * (1 - weight)));
                 //_OutTexture.SetPixel(cR.X / 8, _OutTexture.height - cR.Y / 8, new Color(cR.L, cR.A, cR.B));
-                //_OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(c.L, c.A, c.B));
 
 
             }
@@ -85,12 +97,20 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
             count++;
         }
 
-        //float residualError = _SLIC.ComputeNewClusterCenters(ref clusterCenters);
-        ////Debug.Log("ResidualError: " + residualError);
-        //foreach (CIELABXYCenter c in clusterCenters)
-        //{
-        //    _OutTexture.SetPixel(c.X / 8, _OutTexture.height - c.Y / 8, new Color(0, 1, 0));
-        //}
+        for (int i = 0; i < tempTex.width; i++)
+        {
+            for (int j = 0; j < tempTex.height; j++)
+            {
+                if (tempTex.GetPixel(i, j) != tempTex.GetPixel(i - 1, j) ||
+                    tempTex.GetPixel(i, j) != tempTex.GetPixel(i, j - 1))
+                {
+                    _OutTexture.SetPixel(i, j, Color.red);
+                }
+            }
+        }
+
+
+
 
         _OutTexture.Apply();
 
@@ -110,6 +130,8 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         _OutTexture.filterMode = FilterMode.Point;
         _OutTexture.anisoLevel = 0;
 #endif
+
+        Debug.Log(_OutTexture.width + "x" + _OutTexture.height);
     }
 
     public void OnTangoServiceConnected()
