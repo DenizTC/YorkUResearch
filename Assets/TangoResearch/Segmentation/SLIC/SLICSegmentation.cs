@@ -70,6 +70,10 @@ public class CIELABXYCenter : CIELABXY
     }
 }
 
+/// <summary>
+/// SLIC superpixel segmentation.
+/// Based on the paper: http://www.kev-smith.com/papers/SLIC_Superpixels.pdf
+/// </summary>
 public class SLICSegmentation
 {
     // SuperPixel center at every grid interval S = sqrt(N / K).
@@ -80,6 +84,8 @@ public class SLICSegmentation
     public int MaxIterations = 4;
 
     public int ResDiv = 16;
+
+    public int _ClusterCount = 32;
 
     public int Compactness = 10;
 
@@ -208,8 +214,7 @@ public class SLICSegmentation
 
     public void InitClusterCenters(TangoUnityImageData imageBuffer,
         out List<CIELABXYCenter> clusterCenters,
-        out List<CIELABXY> pixel5Ds,
-        int superPixelCount = 32)
+        out List<CIELABXY> pixel5Ds)
     {
         
         clusterCenters = new List<CIELABXYCenter>();
@@ -218,7 +223,7 @@ public class SLICSegmentation
         // Approximate size of super pixels (N / K).
         float spSize = (imageBuffer.width / (float)ResDiv) * 
             (imageBuffer.height / (float)ResDiv) /
-            ((float)superPixelCount);
+            ((float)_ClusterCount);
 
         S = Mathf.Sqrt(spSize);
 
@@ -340,12 +345,12 @@ public class SLICSegmentation
         throw new NotImplementedException();
     }
 
-    public List<CIELABXYCenter> RunSLICSegmentation(TangoUnityImageData imageBuffer, int clusterCount = 32)
+    public List<CIELABXYCenter> RunSLICSegmentation(TangoUnityImageData imageBuffer)
     {
         float residualError = float.MaxValue;
         List<CIELABXY> pixel5Ds;
         List<CIELABXYCenter> clusterCenters;
-        InitClusterCenters(imageBuffer, out clusterCenters, out pixel5Ds, clusterCount);
+        InitClusterCenters(imageBuffer, out clusterCenters, out pixel5Ds);
         //PertubClusterCentersToLowestGradient(imageBuffer, ref clusterCenters);
 
         int count = MaxIterations;

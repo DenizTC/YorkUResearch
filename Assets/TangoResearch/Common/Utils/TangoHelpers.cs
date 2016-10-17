@@ -59,4 +59,56 @@ public static class TangoHelpers {
         return (scaleRGB) ? result / 255f : result;
     }
 
+    public static float Grayscale(Vector3 rgb)
+    {
+        float luma = 0.2126f * rgb.x + 0.7152f * rgb.y + 0.0722f * rgb.z;
+        return luma;
+    }
+
+    public static Vector3[,] ImageBufferToArray(TangoUnityImageData imageBuffer, uint resDiv = 8, bool convertToRGB = true)
+    {
+        uint _width = imageBuffer.width / resDiv;
+        uint _height = imageBuffer.height / resDiv;
+
+        //Debug.Log("resDiv: " + resDiv + " w: " + _width + " h: " + _height);
+
+        Vector3[,] result = new Vector3[_width, _height];
+        for (int i = 0; i < _width; i++)
+        {
+            for (int j = 0; j < _height; j++)
+            {
+                Vector3 yuv = GetYUV(imageBuffer, i*(int)resDiv, j * (int)resDiv);
+                if (!convertToRGB)
+                    result[i, j] = yuv;
+                else
+                    result[i, j] = YUVToRGB(yuv, false, false);
+            }
+        }
+
+        return result;
+    }
+
+    public static int[,] ImageBufferToGrayscaleArray(TangoUnityImageData imageBuffer, uint resDiv = 8)
+    {
+        uint _width = imageBuffer.width / resDiv;
+        uint _height = imageBuffer.height / resDiv;
+
+        int[,] result = new int[_width, _height];
+        for (int i = 0; i < imageBuffer.width; i++)
+        {
+            for (int j = 0; j < imageBuffer.height; j++)
+            {
+                Vector3 yuv = GetYUV(imageBuffer, i, j);
+                Vector3 rgb = YUVToRGB(yuv, false, false);
+                result[i, j] = (int)Grayscale(rgb);
+            }
+        }
+
+        return result;
+    }
+
+    public static Color Vector3ToColor(Vector3 v)
+    {
+        return new Color(v.x, v.y, v.z);
+    }
 }

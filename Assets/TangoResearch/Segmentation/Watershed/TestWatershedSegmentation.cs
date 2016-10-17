@@ -3,46 +3,7 @@ using System.Collections;
 using Tango;
 using System.Collections.Generic;
 
-public class VectorInt2
-{
-    public int X;
-    public int Y;
-
-    public VectorInt2()
-    {
-    }
-
-    public VectorInt2(int x, int y)
-    {
-        X = x;
-        Y = y;
-    }
-
-    public override bool Equals(object obj)
-    {
-        // Check for null values and compare run-time types.
-        if (obj == null || GetType() != obj.GetType())
-            return false;
-
-        VectorInt2 p = (VectorInt2)obj;
-        return (X == p.X) && (Y == p.Y);
-    }
-
-    public override int GetHashCode()
-    {
-        return X ^ Y;
-        //unchecked // Overflow is fine, just wrap
-        //{
-        //    int hash = 17;
-        //    // Suitable nullity checks etc, of course :)
-        //    hash = hash * 23 + X.GetHashCode();
-        //    hash = hash * 23 + Y.GetHashCode();
-        //    return hash;
-        //}
-    }
-}
-
-public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle
+public class TestWatershedSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle
 {
 
     private TangoApplication _tangoApplication;
@@ -51,23 +12,22 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
 
     private TangoUnityImageData _lastImageBuffer = null;
 
-    public SLICSegmentation _SLIC;
+    public WatershedSegmentation _Watershed;
 
     public int _ResDiv = 16;
 
     public int _ClusterCount = 32;
 
-    public int _Compactness = 10;
-
-    public float _ErrorThreshold = 0.001f;
+    public int _BorderThreshold = 7;
 
     public int _MaxIterations = 10;
 
     private Dictionary<int, Color> _regionColors = new Dictionary<int, Color>();
-    
+
     public Material _ResultMat;
 
-    public void Start () {
+    public void Start()
+    {
         _tangoApplication = FindObjectOfType<TangoApplication>();
         if (_tangoApplication != null)
         {
@@ -83,11 +43,10 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         tempTex.filterMode = FilterMode.Point;
         tempTex.mipMapBias = 0;
 
-        _SLIC = new SLICSegmentation();
-        _SLIC.MaxIterations = _MaxIterations;
-        _SLIC.ResidualErrorThreshold = _ErrorThreshold;
-        _SLIC.ResDiv = _ResDiv;
-        _SLIC.Compactness = _Compactness;
+        _Watershed = new WatershedSegmentation();
+        _Watershed._ClusterCount = _ClusterCount;
+        _Watershed._ResDiv = (uint)_ResDiv;
+        _Watershed._BorderThreshold = _BorderThreshold;
     }
 
     public static Color RandomColor()
@@ -103,32 +62,31 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
     {
         _lastImageBuffer = imageBuffer;
 
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer, _ClusterCount);
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(imageBuffer, (uint)_ResDiv, true);
+        int[,] S = _Watershed.Run(pixels);
 
-        int count = 0;
-        foreach (CIELABXYCenter c in clusterCenters)
+        for (int i = 0; i < _OutTexture.width; i++)
         {
-            foreach (CIELABXY cR in c.Region)
+            for (int j = 0; j < _OutTexture.height; j++)
             {
-                if (!_regionColors.ContainsKey(count))
+                if (!_regionColors.ContainsKey(-S[i, j]))
                 {
-                    _regionColors.Add(count, RandomColor());
+                    _regionColors.Add(-S[i, j], RandomColor());
                 }
-                _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(cR.RGB.x, cR.RGB.y, cR.RGB.z));
-                tempTex.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(_regionColors[count].r, _regionColors[count].g, _regionColors[count].b));
-            }
-            count++;
-        }
 
-        for (int i = 0; i < tempTex.width; i++)
-        {
-            for (int j = 0; j < tempTex.height; j++)
-            {
-                if (tempTex.GetPixel(i, j) != tempTex.GetPixel(i - 1, j) ||
-                    tempTex.GetPixel(i, j) != tempTex.GetPixel(i, j - 1))
+                if (S[i, j] < -1)
                 {
-                    _OutTexture.SetPixel(i, j, Color.red);
+                    _OutTexture.SetPixel(i, _OutTexture.height - j, _regionColors[-S[i, j]]);
                 }
+                //if (S[i, j] == -1)
+                //{
+                //    _OutTexture.SetPixel(i, _OutTexture.height - j, Color.red);
+                //}
+                else
+                {
+                    _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
+                }
+                
             }
         }
 
