@@ -9,6 +9,7 @@ public class SceneLoader : MonoBehaviour {
     public Button _LoadOcclusionAndLighting;
     public Button _LoadOcclusionAndLightingSC;
     public Button _ButtonLoadFindLights;
+    public Button _ButtonLoadSegmentation;
 
     public static bool SpaceClearing3DR = false;
 
@@ -18,6 +19,7 @@ public class SceneLoader : MonoBehaviour {
         _LoadOcclusionAndLighting.onClick.AddListener(onOcclusionAndLightingClick);
         _LoadOcclusionAndLightingSC.onClick.AddListener(onOcclusionAndLightingSCClick);
         _ButtonLoadFindLights.onClick.AddListener(onClickLoadFindLights);
+        _ButtonLoadSegmentation.onClick.AddListener(onClickLoadSegmentation);
     }
 
 
@@ -41,6 +43,11 @@ public class SceneLoader : MonoBehaviour {
     private void onClickLoadFindLights()
     {
         SceneManager.LoadScene(3, LoadSceneMode.Single);
+    }
+
+    private void onClickLoadSegmentation()
+    {
+        SceneManager.LoadScene(4, LoadSceneMode.Single);
     }
 
 }
