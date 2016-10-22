@@ -1,6 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections;
-using Tango;
 using System.Collections.Generic;
 using System;
 
@@ -92,6 +90,9 @@ public class WatershedSegmentation {
     public Queue<WatershedPixel>[] Q;
     public int[,] S;
     public int[,] G;
+
+    private Dictionary<int, int> _labelIndexPair;
+    private List<Superpixel> _superpixels;
 
     private uint _width = 1280;
     private uint _height = 720;
@@ -234,6 +235,8 @@ public class WatershedSegmentation {
         float gridInterval = Mathf.Sqrt(spSize);
 
         // Sample '_ClusterCount' seeds over S using gradient values.
+        _labelIndexPair = new Dictionary<int, int>();
+        _superpixels = new List<Superpixel>();
         int count = 1;
         for (int i = 1; i < _width; i+=(int)gridInterval)
         {
@@ -243,6 +246,8 @@ public class WatershedSegmentation {
                 {
                     //S[i, j] = Gradient(ref pixels, i, j);
                     S[i, j] = count++;
+                    _labelIndexPair.Add(count, _labelIndexPair.Count);
+                    _superpixels.Add(new Superpixel(i, j, pixels[i, j]));
                 }
             }
         }
@@ -314,6 +319,18 @@ public class WatershedSegmentation {
                 } // adjacent a_i
             } // Q[h]
         } // h
+    }
+
+    public List<Superpixel> ToSuperpixels(ref Vector3[,] pixels)
+    {
+        for (int i = 0; i < S.GetLength(0); i++)
+        {
+            for (int j = 0; j < S.GetLength(1); j++)
+            {
+                _superpixels[_labelIndexPair[-S[i, j]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+            }
+        }
+        return _superpixels;
     }
 
     public int[,] Run(Vector3[,] pixels)
