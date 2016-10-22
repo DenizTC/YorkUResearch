@@ -323,11 +323,19 @@ public class WatershedSegmentation {
 
     public List<Superpixel> ToSuperpixels(ref Vector3[,] pixels)
     {
-        for (int i = 0; i < S.GetLength(0); i++)
+        for (int i = 1; i < S.GetLength(0); i++)
         {
-            for (int j = 0; j < S.GetLength(1); j++)
+            for (int j = 1; j < S.GetLength(1); j++)
             {
-                _superpixels[_labelIndexPair[-S[i, j]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                if (S[i, j] == -1 || S[i,j] > 0)
+                {
+                    _superpixels[_labelIndexPair[-S[i-1, j-1]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                }
+                else
+                {
+                    _superpixels[_labelIndexPair[-S[i, j]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                }
+
             }
         }
         return _superpixels;
