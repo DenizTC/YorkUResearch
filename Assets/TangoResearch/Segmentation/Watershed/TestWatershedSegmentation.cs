@@ -65,30 +65,46 @@ public class TestWatershedSegmentation : MonoBehaviour, ITangoVideoOverlay, ITan
         Vector3[,] pixels = TangoHelpers.ImageBufferToArray(imageBuffer, (uint)_ResDiv, true);
         int[,] S = _Watershed.Run(pixels);
 
-        for (int i = 0; i < _OutTexture.width; i++)
+        int count = 0;
+        List<Superpixel> superpixels = _Watershed.ToSuperpixels(ref pixels);
+        foreach (Superpixel s in superpixels)
         {
-            for (int j = 0; j < _OutTexture.height; j++)
+            if (!_regionColors.ContainsKey(count))
             {
-                if (!_regionColors.ContainsKey(-S[i, j]))
-                {
-                    _regionColors.Add(-S[i, j], RandomColor());
-                }
-
-                if (S[i, j] < -1)
-                {
-                    _OutTexture.SetPixel(i, _OutTexture.height - j, _regionColors[-S[i, j]]);
-                }
-                //if (S[i, j] == -1)
-                //{
-                //    _OutTexture.SetPixel(i, _OutTexture.height - j, Color.red);
-                //}
-                else
-                {
-                    _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
-                }
-                
+                _regionColors.Add(count, RandomColor());
             }
+            foreach (RegionPixel p in s.Pixels)
+            {
+                
+                _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[count]);
+            }
+            count++;
         }
+
+        //for (int i = 0; i < _OutTexture.width; i++)
+        //{
+        //    for (int j = 0; j < _OutTexture.height; j++)
+        //    {
+        //        if (!_regionColors.ContainsKey(-S[i, j]))
+        //        {
+        //            _regionColors.Add(-S[i, j], RandomColor());
+        //        }
+
+        //        if (S[i, j] < -1)
+        //        {
+        //            _OutTexture.SetPixel(i, _OutTexture.height - j, _regionColors[-S[i, j]]);
+        //        }
+        //        //if (S[i, j] == -1)
+        //        //{
+        //        //    _OutTexture.SetPixel(i, _OutTexture.height - j, Color.red);
+        //        //}
+        //        else
+        //        {
+        //            _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
+        //        }
+                
+        //    }
+        //}
 
         _OutTexture.Apply();
         _ResultMat.mainTexture = _OutTexture;

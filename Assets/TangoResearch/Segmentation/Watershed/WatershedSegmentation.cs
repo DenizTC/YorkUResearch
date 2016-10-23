@@ -245,9 +245,10 @@ public class WatershedSegmentation {
                 if (S[i, j] != -1)
                 {
                     //S[i, j] = Gradient(ref pixels, i, j);
-                    S[i, j] = count++;
+                    
                     _labelIndexPair.Add(count, _labelIndexPair.Count);
                     _superpixels.Add(new Superpixel(i, j, pixels[i, j]));
+                    S[i, j] = count++;
                 }
             }
         }
@@ -329,11 +330,12 @@ public class WatershedSegmentation {
             {
                 if (S[i, j] == -1 || S[i,j] > 0)
                 {
-                    _superpixels[_labelIndexPair[-S[i-1, j-1]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                    //_superpixels[_labelIndexPair[-S[i-1, j-1]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
                 }
                 else
                 {
-                    _superpixels[_labelIndexPair[-S[i, j]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                    int labelIndex = _labelIndexPair[-S[i, j]];
+                    _superpixels[labelIndex].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
                 }
 
             }
