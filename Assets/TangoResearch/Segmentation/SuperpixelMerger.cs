@@ -8,33 +8,45 @@ public class SuperpixelMerger : MonoBehaviour {
     /// <summary>
     /// The Euclidean distance threshold.
     /// </summary>
-    float Td = 0;
+    public float Td = 0;
 
     /// <summary>
     /// The colorimetric distance threshold.
     /// </summary>
-    float Tc = 0;
+    public float Tc = 0;
 
     /// <summary>
     /// The established threshold for the maximum angle between the two normal vectors.
     /// </summary>
-    float Etheta = 0;
+    public float Etheta = 0;
 
     /// <summary>
-    /// Finds the nearest surface normal intersecting the ray casted from the specified screen coordinates.
+    /// Finds the surface normal intersecting the ray casted from the specified screen coordinates.
     /// </summary>
     /// <param name="x">The x coordinate (screenspace).</param>
     /// <param name="y">The y coordinate (screenspace).</param>
-    private Vector3 NearestSurfaceNormal(int x, int y)
+    private bool SurfaceNormal(int x, int y, out Vector3 normal)
     {
-        throw new NotImplementedException();
+        normal = Vector3.zero;
+        RaycastHit hit;
+        Ray ray = Camera.main.ScreenPointToRay(new Vector2(x, y));
+        if (Physics.Raycast(ray, out hit))
+        {
+            normal = hit.normal;
+            return true;
+        }
+        
+        return false;
+
     }
 
     private void ComputeSurfaceNormals(ref List<Superpixel> superpixels)
     {
         foreach (Superpixel s in superpixels)
         {
-            s.Normal = NearestSurfaceNormal(s.X, s.Y);
+            Vector3 normal;
+            SurfaceNormal(s.X, s.Y, out normal);
+            s.Normal = normal;
         }
     }
 
@@ -46,6 +58,9 @@ public class SuperpixelMerger : MonoBehaviour {
         if (!labelSuperpixelPair.ContainsKey(p.Label) && !labelSuperpixelPair.ContainsKey(q.Label))
             return false;
 
+        if (p.Label == q.Label)
+            return false;
+           
         float Dxy = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(q.X, q.Y));
         if (Dxy > Td)
             return false;
@@ -53,6 +68,13 @@ public class SuperpixelMerger : MonoBehaviour {
         float Dcol = Vector3.Distance(new Vector3(p.R, p.G, p.B), new Vector3(q.R, q.G, q.B));
         if (Dcol > Tc)
             return false;
+
+        if (Input.GetMouseButtonDown(1))
+        {
+            Debug.Log(Dxy + " " + Dcol);
+        }
+
+        return true;
 
         float Dnorm = Vector3.Distance(p.Normal, q.Normal);
         if (Dnorm > Etheta)
@@ -75,10 +97,10 @@ public class SuperpixelMerger : MonoBehaviour {
         {
             foreach (Superpixel b in superpixels)
             {
-                if (BelongsToRegion(a, b, ref labelSuperpixelPair))
+                if (BelongsToRegion(b, a, ref labelSuperpixelPair))
                 {
-                    labelSuperpixelPair[b.Label].Pixels.AddRange(a.Pixels);
-                    labelSuperpixelPair.Remove(a.Label);
+                    labelSuperpixelPair[a.Label].Pixels.AddRange(b.Pixels);
+                    labelSuperpixelPair.Remove(b.Label);
                 }
             }
         }

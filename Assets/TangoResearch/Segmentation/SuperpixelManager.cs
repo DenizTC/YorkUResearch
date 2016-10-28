@@ -34,6 +34,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     public WatershedSegmentation _Watershed;
     public SLICSegmentation _SLIC;
+    private SuperpixelMerger _Merger;
 
     public int _ClusterCount = 32;
     public int _MaxIterations = 1;
@@ -82,6 +83,8 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         _SLIC.MaxIterations = _MaxIterations;
         _SLIC.ResidualErrorThreshold = _ErrorThreshold;
         _SLIC.Compactness = _Compactness;
+
+        _Merger = GetComponent<SuperpixelMerger>();
 
     }
 
@@ -156,6 +159,11 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
         List<Superpixel> superpixels;
         int[,] S = _Watershed.Run(pixels, out superpixels);
+
+        int before = superpixels.Count;
+        superpixels = _Merger.MergeSuperpixels(superpixels);
+
+        Debug.Log("Superpixels before: " + before + "  after: " + superpixels.Count);
 
         if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)
         {
