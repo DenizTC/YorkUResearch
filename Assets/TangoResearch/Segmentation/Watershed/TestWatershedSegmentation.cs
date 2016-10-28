@@ -45,7 +45,6 @@ public class TestWatershedSegmentation : MonoBehaviour, ITangoVideoOverlay, ITan
 
         _Watershed = new WatershedSegmentation();
         _Watershed._ClusterCount = _ClusterCount;
-        _Watershed._ResDiv = (uint)_ResDiv;
         _Watershed._BorderThreshold = _BorderThreshold;
     }
 
@@ -63,10 +62,10 @@ public class TestWatershedSegmentation : MonoBehaviour, ITangoVideoOverlay, ITan
         _lastImageBuffer = imageBuffer;
 
         Vector3[,] pixels = TangoHelpers.ImageBufferToArray(imageBuffer, (uint)_ResDiv, true);
-        int[,] S = _Watershed.Run(pixels);
+        List<Superpixel> superpixels;
+        int[,] S = _Watershed.Run(pixels, out superpixels);
 
         int count = 0;
-        List<Superpixel> superpixels = _Watershed.ToSuperpixels(ref pixels);
         foreach (Superpixel s in superpixels)
         {
             if (!_regionColors.ContainsKey(count))

@@ -86,7 +86,6 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
         _SLIC = new SLICSegmentation();
         _SLIC.MaxIterations = _MaxIterations;
         _SLIC.ResidualErrorThreshold = _ErrorThreshold;
-        _SLIC.ResDiv = _ResDiv;
         _SLIC.Compactness = _Compactness;
     }
 
@@ -103,7 +102,10 @@ public class TestSLICSegmentation : MonoBehaviour, ITangoVideoOverlay, ITangoLif
     {
         _lastImageBuffer = imageBuffer;
 
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer);
+
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        List<Superpixel> superpixels;
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
 
         int count = 0;
         foreach (CIELABXYCenter c in clusterCenters)

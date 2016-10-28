@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System;
-using Tango;
 using System.Collections.Generic;
 
 /// <summary>
@@ -76,6 +75,9 @@ public class CIELABXYCenter : CIELABXY
 /// </summary>
 public class SLICSegmentation
 {
+    private uint _width = 1280;
+    private uint _height = 720;
+
     // SuperPixel center at every grid interval S = sqrt(N / K).
     private float S = 0f;
 
@@ -83,11 +85,11 @@ public class SLICSegmentation
 
     public int MaxIterations = 4;
 
-    public int ResDiv = 16;
-
     public int _ClusterCount = 32;
 
     public int Compactness = 10;
+
+    private List<Superpixel> _superpixels;
 
     /// <summary>
     /// Converts RGB to XYZ.
@@ -175,13 +177,13 @@ public class SLICSegmentation
         //return dLAB;
     }
 
-    public static float Gradient(TangoUnityImageData imageBuffer, int x, int y, int resDiv)
+    public static float Gradient(ref Vector3[,] pixels, int x, int y)
     {
-        Vector3 rgbLeft = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer, x-1*resDiv, y));
-        Vector3 rgbRight = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer, x+1*resDiv, y));
+        Vector3 rgbLeft = pixels[x - 1, y];
+        Vector3 rgbRight = pixels[x + 1, y];
 
-        Vector3 rgbDown = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer,x, y - 1 * resDiv));
-        Vector3 rgbUp = TangoHelpers.YUVToRGB(TangoHelpers.GetYUV(imageBuffer,x, y + 1 * resDiv));
+        Vector3 rgbDown = pixels[x, y - 1];
+        Vector3 rgbUp = pixels[x, y + 1];
 
         float horizontal = Mathf.Pow((rgbRight - rgbLeft).magnitude, 2);
         float vertical = Mathf.Pow((rgbUp - rgbDown).magnitude, 2);
@@ -212,7 +214,7 @@ public class SLICSegmentation
         return ave;
     }
 
-    public void InitClusterCenters(TangoUnityImageData imageBuffer,
+    public void InitClusterCenters(ref Vector3[,] pixels,
         out List<CIELABXYCenter> clusterCenters,
         out List<CIELABXY> pixel5Ds)
     {
@@ -221,29 +223,20 @@ public class SLICSegmentation
         pixel5Ds = new List<CIELABXY>();
 
         // Approximate size of super pixels (N / K).
-        float spSize = (imageBuffer.width / (float)ResDiv) * 
-            (imageBuffer.height / (float)ResDiv) /
+        float spSize = _width * _height /
             ((float)_ClusterCount);
 
         S = Mathf.Sqrt(spSize);
 
-        int wS = (int)(imageBuffer.width / (float)ResDiv);
-        int hS = (int)(imageBuffer.height / (float)ResDiv);
-
-        for (int i = 0; i < hS; i++)
+        for (int i = 0; i < _width; i++)
         {
-            for (int j = 0; j < wS; j++)
-            {
-                int iS = i * ResDiv;
-                int jS = j * ResDiv;
-
-                Vector3 yuv = TangoHelpers.GetYUV(imageBuffer, jS, iS);
-                Vector3 rgb = TangoHelpers.YUVToRGB(yuv);
-                Vector3 XYZ = RGBToXYZ(rgb);
+            for (int j = 0; j < _height; j++)
+            { 
+                Vector3 XYZ = RGBToXYZ(pixels[i,j] / 255f);
                 Vector3 LAB = XYZToCIELAB(XYZ);
 
-                CIELABXY c = new CIELABXY(LAB, jS, iS);
-                c.RGB = rgb;
+                CIELABXY c = new CIELABXY(LAB, i, j);
+                c.RGB = pixels[i, j];
 
                 pixel5Ds.Add(c);
                 if ((i % (int)S == 0) && (j % (int)S == 0)){
@@ -255,21 +248,20 @@ public class SLICSegmentation
 
     }
 
-    public static CIELABXY LowestGradient(TangoUnityImageData imageBuffer,
+    public static CIELABXY LowestGradient(ref Vector3[,] pixels,
         CIELABXY clusterCentre,
-        int resDiv = 8, 
         int size = 3)
     {
         throw new NotImplementedException();
     }
 
-    public void PertubClusterCentersToLowestGradient(TangoUnityImageData imageBuffer, 
+    public void PertubClusterCentersToLowestGradient(ref Vector3[,] pixels, 
         ref List<CIELABXYCenter> clusterCenters,
         int size = 3)
     {
         for (int i = 0; i < clusterCenters.Count; i++)
         {
-            clusterCenters[i] = new CIELABXYCenter(LowestGradient(imageBuffer, clusterCenters[i]));
+            clusterCenters[i] = new CIELABXYCenter(LowestGradient(ref pixels, clusterCenters[i]));
         }
     }
 
@@ -288,10 +280,10 @@ public class SLICSegmentation
 
             int curX = clusterCenters[i].X;
             int curY = clusterCenters[i].Y;
-            if (p.X >= curX - S * ResDiv &&
-                p.X <= curX + S * ResDiv &&
-                p.Y >= curY - S * ResDiv &&
-                p.Y <= curY + S * ResDiv)
+            if (p.X >= curX - S &&
+                p.X <= curX + S &&
+                p.Y >= curY - S &&
+                p.Y <= curY + S)
             {
                 float ds = Distance(clusterCenters[i], p, S, out dlab, out dxy, Compactness) + 1;
                 if (ds < smallestDiff)
@@ -345,12 +337,31 @@ public class SLICSegmentation
         throw new NotImplementedException();
     }
 
-    public List<CIELABXYCenter> RunSLICSegmentation(TangoUnityImageData imageBuffer)
+    public void SetSuperpixels(ref List<CIELABXYCenter> clusterCenters)
     {
+        _superpixels = new List<Superpixel>();
+        foreach (CIELABXYCenter cc in clusterCenters)
+        {
+            Superpixel s = new Superpixel(cc.X, cc.Y, cc.RGB, _superpixels.Count);
+            foreach (CIELABXY c in cc.Region)
+            {
+                s.Pixels.Add(new RegionPixel(c.X, c.Y, c.RGB));
+            }
+            _superpixels.Add(s);
+            //Debug.Log("Superpixels " + count + ": " + _superpixels[count].Pixels.Count);
+        }
+        //Debug.Log("Superpixels: " + _superpixels.Count);
+    }
+
+    public List<CIELABXYCenter> RunSLICSegmentation(Vector3[,] pixels, out List<Superpixel> superpixels)
+    {
+        _width = (uint)pixels.GetLength(0);
+        _height = (uint)pixels.GetLength(1);
+
         float residualError = float.MaxValue;
         List<CIELABXY> pixel5Ds;
         List<CIELABXYCenter> clusterCenters;
-        InitClusterCenters(imageBuffer, out clusterCenters, out pixel5Ds);
+        InitClusterCenters(ref pixels, out clusterCenters, out pixel5Ds);
         //PertubClusterCentersToLowestGradient(imageBuffer, ref clusterCenters);
 
         int count = MaxIterations;
@@ -368,6 +379,8 @@ public class SLICSegmentation
 
         //EnforeConnectivity();
 
+        SetSuperpixels(ref clusterCenters);
+        superpixels = _superpixels;
         return clusterCenters;
     }
 

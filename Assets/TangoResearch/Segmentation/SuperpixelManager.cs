@@ -76,13 +76,11 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         _Watershed = new WatershedSegmentation();
         _Watershed._ClusterCount = _ClusterCount;
-        _Watershed._ResDiv = (uint)_ResDiv;
         _Watershed._BorderThreshold = _BorderThreshold;
 
         _SLIC = new SLICSegmentation();
         _SLIC.MaxIterations = _MaxIterations;
         _SLIC.ResidualErrorThreshold = _ErrorThreshold;
-        _SLIC.ResDiv = _ResDiv;
         _SLIC.Compactness = _Compactness;
 
     }
@@ -114,8 +112,6 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private void onValueChangedResDiv(float value)
     {
         _ResDiv = (int)(8 - value) + 8;
-        _SLIC.ResDiv = _ResDiv;
-        _Watershed._ResDiv = (uint)_ResDiv;
 
         TangoCameraIntrinsics intrinsics = new TangoCameraIntrinsics();
         VideoOverlayProvider.GetIntrinsics(TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR, intrinsics);
@@ -158,19 +154,21 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private void doCompactWatershed()
     {
         Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        int[,] S = _Watershed.Run(pixels);
+        List<Superpixel> superpixels;
+        int[,] S = _Watershed.Run(pixels, out superpixels);
 
-        for (int i = 0; i < _OutTexture.width; i++)
+        if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)
         {
-            for (int j = 0; j < _OutTexture.height; j++)
+            for (int i = 0; i < _OutTexture.width; i++)
             {
-                if (!_regionColors.ContainsKey(-S[i, j]))
+                for (int j = 0; j < _OutTexture.height; j++)
                 {
-                    _regionColors.Add(-S[i, j], RandomColor());
-                }
+                    if (!_regionColors.ContainsKey(-S[i, j]))
+                    {
+                        _regionColors.Add(-S[i, j], RandomColor());
+                    }
 
-                if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)
-                {
+
                     if (S[i, j] == -1)
                     {
                         _OutTexture.SetPixel(i, _OutTexture.height - j, Color.red);
@@ -179,19 +177,26 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                     {
                         _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
                     }
-                }
-                else
-                {
-                    if (S[i, j] < -1)
-                    {
-                        _OutTexture.SetPixel(i, _OutTexture.height - j, _regionColors[-S[i, j]]);
-                    }
-                    else
-                    {
-                        _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
-                    }
-                }
 
+                }
+            }
+        }
+        else // Mosaic
+        {
+
+            int count = 0;
+            foreach (Superpixel s in superpixels)
+            {
+                if (!_regionColors.ContainsKey(count))
+                {
+                    _regionColors.Add(count, RandomColor());
+                }
+                foreach (RegionPixel p in s.Pixels)
+                {
+
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[count]);
+                }
+                count++;
             }
         }
 
@@ -201,29 +206,31 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     private void doSLIC()
     {
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(_lastImageBuffer);
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        List<Superpixel> superpixels;
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
 
-        int count = 0;
-        foreach (CIELABXYCenter c in clusterCenters)
+        foreach (Superpixel s in superpixels)
         {
-            foreach (CIELABXY cR in c.Region)
+            if (!_regionColors.ContainsKey(s.Label))
             {
-                if (!_regionColors.ContainsKey(count))
+                _regionColors.Add(s.Label, RandomColor());
+            }
+            if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)
+            {
+                foreach (RegionPixel p in s.Pixels)
                 {
-                    _regionColors.Add(count, RandomColor());
-                }
-
-                if (_CurDisplayClusterMode == DisplayClusterMode.MOSAIC)
-                {
-                    _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, _regionColors[count]);
-                }
-                else
-                {
-                    _OutTexture.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, new Color(cR.RGB.x, cR.RGB.y, cR.RGB.z));
-                    tempTex.SetPixel(cR.X / _ResDiv, _OutTexture.height - cR.Y / _ResDiv, _regionColors[count]);
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(p.R / 255f, p.G / 255f, p.B / 255f));
+                    tempTex.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
                 }
             }
-            count++;
+            else // Mosaic
+            {
+                foreach (RegionPixel p in s.Pixels)
+                {
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
+                }
+            }
         }
 
         if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)

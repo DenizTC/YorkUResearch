@@ -83,8 +83,6 @@ public class WatershedSegmentation {
 
     public int _BorderThreshold = 128;
 
-    public uint _ResDiv = 32;
-
     public int _ClusterCount = 32;
 
     public Queue<WatershedPixel>[] Q;
@@ -247,7 +245,7 @@ public class WatershedSegmentation {
                     //S[i, j] = Gradient(ref pixels, i, j);
                     
                     _labelIndexPair.Add(count, _labelIndexPair.Count);
-                    _superpixels.Add(new Superpixel(i, j, pixels[i, j]));
+                    _superpixels.Add(new Superpixel(i, j, pixels[i, j], count));
                     S[i, j] = count++;
                 }
             }
@@ -322,28 +320,87 @@ public class WatershedSegmentation {
         } // h
     }
 
-    public List<Superpixel> ToSuperpixels(ref Vector3[,] pixels)
+    /// <summary>
+    /// Finds a neighbor value in S such that S[x_i, y_j] = filled.
+    /// </summary>
+    private int findFilledNeighbor(int x, int y)
     {
-        for (int i = 1; i < S.GetLength(0); i++)
+        int curIter = 1;
+
+        while (curIter < 5)
         {
-            for (int j = 1; j < S.GetLength(1); j++)
+            // top
+            for (int i = x - curIter; i <= x + curIter; i++)
             {
-                if (S[i, j] == -1 || S[i,j] > 0)
+                if (i < 0) continue;
+                if (i >= S.GetLength(0)) break;
+                if (S[i, y+1] < -1)
+                    return S[i, y+1];
+            }
+
+            // bottom
+            for (int i = x - curIter; i <= x + curIter; i++)
+            {
+                if (i < 0) continue;
+                if (i >= S.GetLength(0)) break;
+                if (S[i, y - 1] < -1)
+                    return S[i, y-1];
+            }
+
+            // right
+            for (int i = y - curIter; i <= y + curIter; i++)
+            {
+                if (i < 0) continue;
+                if (i >= S.GetLength(1)) break;
+                if (x + 1 < 0 || x + 1 >= _width || 
+                    i < 0 || i >= _height)
                 {
-                    //_superpixels[_labelIndexPair[-S[i-1, j-1]]].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                    Debug.Log(x + 1 + "x" + i + " - " + _width + "x" + _height + " - " + S.GetLength(0) + "x" + S.GetLength(1));
+                }
+                if (S[x + 1, i] < -1)
+                    return S[x + 1, i];
+            }
+
+            // left
+            for (int i = y - curIter; i <= y + curIter; i++)
+            {
+                if (i < 0) continue;
+                if (i >= S.GetLength(1)) break;
+                if (S[x - 1, i] < -1)
+                    return S[x - 1, i];
+            }
+
+            curIter++;
+        }
+        return 0;
+    }
+
+    public void SetSuperpixels(ref Vector3[,] pixels)
+    {
+        for (int i = 1; i < S.GetLength(0) - 1; i++)
+        {
+            for (int j = 1; j < S.GetLength(1) - 1; j++)
+            {
+                if (S[i, j] < -1)
+                {
+                    int labelIndex = _labelIndexPair[-S[i, j] - 1];
+                    _superpixels[labelIndex].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
                 }
                 else
                 {
-                    int labelIndex = _labelIndexPair[-S[i, j]];
-                    _superpixels[labelIndex].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                    int label = -findFilledNeighbor(i, j) - 1;
+                    if (label > 0)
+                    {
+                        int labelIndex = _labelIndexPair[-findFilledNeighbor(i, j) - 1];
+                        _superpixels[labelIndex].Pixels.Add(new RegionPixel(i, j, pixels[i, j]));
+                    }
                 }
 
             }
         }
-        return _superpixels;
     }
 
-    public int[,] Run(Vector3[,] pixels)
+    public int[,] Run(Vector3[,] pixels, out List<Superpixel> superpixels)
     {
         _width = (uint)pixels.GetLength(0);
         _height = (uint)pixels.GetLength(1);
@@ -358,6 +415,8 @@ public class WatershedSegmentation {
         }
         while (!IsQueuesEmpty());
 
+        SetSuperpixels(ref pixels);
+        superpixels = _superpixels;
         return S;
     }
 
