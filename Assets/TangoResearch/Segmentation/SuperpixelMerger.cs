@@ -50,6 +50,50 @@ public class SuperpixelMerger : MonoBehaviour {
         }
     }
 
+    private void ComputePixelDistanceThreshold()
+    {
+        throw new NotImplementedException();
+    }
+
+    private void ComputeColorDistanceThreshold()
+    {
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Checks if p belongs to q.
+    /// </summary>
+    public bool BelongsToRegion(Superpixel p, Superpixel q)
+    {
+        if (p.Label == q.Label)
+            return false;
+
+        float Dxy = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(q.X, q.Y));
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+
+            Debug.Log(Dxy);
+        }
+
+
+        if (Dxy > Td)
+            return false;
+
+        float Dcol = Vector3.Distance(new Vector3(p.R, p.G, p.B), new Vector3(q.R, q.G, q.B));
+        if (Dcol > Tc)
+            return false;
+
+        
+
+        return true;
+
+        float Dnorm = Vector3.Distance(p.Normal, q.Normal);
+        if (Dnorm > Etheta)
+            return false;
+
+        return true;
+    }
+
     /// <summary>
     /// Checks if p belongs to q.
     /// </summary>
@@ -86,27 +130,42 @@ public class SuperpixelMerger : MonoBehaviour {
     public List<Superpixel> MergeSuperpixels(List<Superpixel> superpixels)
     {
         ComputeSurfaceNormals(ref superpixels);
-
-        Dictionary<int, Superpixel> labelSuperpixelPair = new Dictionary<int, Superpixel>();
+        
+        Stack<Superpixel> a = new Stack<Superpixel>();
+        Stack<Superpixel> b = new Stack<Superpixel>();
         foreach (Superpixel s in superpixels)
         {
-            labelSuperpixelPair.Add(s.Label, s);
-        }
-
-        foreach (Superpixel a in superpixels)
-        {
-            foreach (Superpixel b in superpixels)
-            {
-                if (BelongsToRegion(b, a, ref labelSuperpixelPair))
-                {
-                    labelSuperpixelPair[a.Label].Pixels.AddRange(b.Pixels);
-                    labelSuperpixelPair.Remove(b.Label);
-                }
-            }
+            a.Push(s);
         }
 
         List<Superpixel> sp = new List<Superpixel>();
-        sp.AddRange(labelSuperpixelPair.Values);
+        while (a.Count > 0)
+        {
+            Superpixel aCur = a.Pop();
+
+            while (a.Count > 0)
+            {
+                Superpixel bCur = a.Pop();
+                if (BelongsToRegion(bCur, aCur))
+                {
+                    aCur.Pixels.AddRange(bCur.Pixels);
+                }
+                else
+                {
+                    b.Push(bCur);
+                }
+                
+            }
+
+            sp.Add(aCur);
+
+            while (b.Count > 0)
+            {
+                a.Push(b.Pop());
+            }
+
+        }
+        
         return sp;
 
     }

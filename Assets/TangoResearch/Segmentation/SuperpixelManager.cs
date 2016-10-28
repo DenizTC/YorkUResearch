@@ -217,6 +217,11 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
         List<Superpixel> superpixels;
         List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
+        int before = superpixels.Count;
+        superpixels = _Merger.MergeSuperpixels(superpixels);
+
+        Debug.Log("Superpixels before: " + before + "  after: " + superpixels.Count);
+
 
         foreach (Superpixel s in superpixels)
         {
