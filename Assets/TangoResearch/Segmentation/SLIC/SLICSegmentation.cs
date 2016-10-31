@@ -90,6 +90,7 @@ public class SLICSegmentation
     public int Compactness = 10;
 
     private List<Superpixel> _superpixels;
+    private Dictionary<int, int> _labelIndexPair;
 
     /// <summary>
     /// Converts RGB to XYZ.
@@ -163,18 +164,14 @@ public class SLICSegmentation
         return new Vector3(l, a, b);
     }
 
-    public static float Distance(CIELABXY cA, CIELABXY cB, float S, out float dlab, out float dxy, int compactness = 10)
+    private float Distance(CIELABXY cA, CIELABXY cB, float S, out float dlab, out float dxy, int compactness = 10)
     {
         float dLAB = Mathf.Sqrt(Mathf.Pow(cA.L - cB.L, 2) + Mathf.Pow(cA.A - cB.A, 2) + Mathf.Pow(cA.B - cB.B, 2));
-        float dXY = Mathf.Sqrt(Mathf.Pow(cA.X / 1280f - cB.X / 1280f, 2) + Mathf.Pow(cA.Y / 720f - cB.Y / 720f, 2));
+        float dXY = Mathf.Sqrt(Mathf.Pow(cA.X / (float)_width - cB.X / (float)_width, 2) + Mathf.Pow(cA.Y / (float)_height - cB.Y / (float)_height, 2));
 
-        //float dXY = Mathf.Sqrt(Mathf.Pow(cA.X - cB.X, 2) + Mathf.Pow(cA.Y - cB.Y, 2));
-
-        //Debug.Log("c0:" + cA.X + "x" + cA.Y + " c1:" + cB.X + "x" + cB.Y + " dLAB:" + dLAB + " dXY:" + dXY);
         dlab = dLAB;
         dxy = dXY;
         return dLAB + (compactness/S)*dXY;
-        //return dLAB;
     }
 
     public static float Gradient(ref Vector3[,] pixels, int x, int y)
@@ -216,11 +213,10 @@ public class SLICSegmentation
 
     public void InitClusterCenters(ref Vector3[,] pixels,
         out List<CIELABXYCenter> clusterCenters,
-        out List<CIELABXY> pixel5Ds)
+        ref CIELABXY[,] pixels5D)
     {
         
         clusterCenters = new List<CIELABXYCenter>();
-        pixel5Ds = new List<CIELABXY>();
 
         // Approximate size of super pixels (N / K).
         float spSize = _width * _height /
@@ -231,18 +227,18 @@ public class SLICSegmentation
         for (int i = 0; i < _width; i++)
         {
             for (int j = 0; j < _height; j++)
-            { 
-                Vector3 XYZ = RGBToXYZ(pixels[i,j] / 255f);
+            {
+                Vector3 XYZ = RGBToXYZ(pixels[i, j] / 255f);
                 Vector3 LAB = XYZToCIELAB(XYZ);
 
                 CIELABXY c = new CIELABXY(LAB, i, j);
                 c.RGB = pixels[i, j];
 
-                pixel5Ds.Add(c);
-                if ((i % (int)S == 0) && (j % (int)S == 0)){
+                pixels5D[i, j] = c;
+                if ((i % (int)S == 0) && (j % (int)S == 0))
+                {
                     clusterCenters.Add(new CIELABXYCenter(c));
                 }
-
             }
         }
 
@@ -272,8 +268,8 @@ public class SLICSegmentation
         for (int i = 0; i < clusterCenters.Count; i++)
         {
 
-            if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
-                continue;
+            //if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
+            //    continue;
 
             float dlab = 0;
             float dxy = 0;
@@ -298,7 +294,7 @@ public class SLICSegmentation
         if (newClusterCenterIdx >= 0)
         {
             clusterCenters[newClusterCenterIdx].Region.Add(p);
-            p.label = clusterCenters[newClusterCenterIdx].GetHashCode();
+            p.label = newClusterCenterIdx;
         }
     }
 
@@ -312,8 +308,8 @@ public class SLICSegmentation
         int count = 0;
         for (int i = 0; i < clusterCenters.Count; i++)
         {
-            if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
-                continue;
+            //if (clusterCenters[i].ResidualError < ResidualErrorThreshold)
+            //    continue;
 
             float dlab, dxy;
             float curResError = 0;
@@ -321,6 +317,7 @@ public class SLICSegmentation
             curResError += Distance(clusterCenters[i], newClusterCenter, S, out dlab, out dxy, Compactness);
             newClusterCenter.ResidualError = curResError;
             newClusterCenter.Region = clusterCenters[i].Region;
+            newClusterCenter.label = clusterCenters[i].label;
             clusterCenters[i] = newClusterCenter;
 
             dlabSum += dlab;
@@ -332,54 +329,105 @@ public class SLICSegmentation
         return residualError;
     }
 
-    public void EnforeConnectivity()
+    public void EnforeConnectivity(ref CIELABXY[,] pixels5D, ref List<CIELABXYCenter> clusterCenters)
     {
-        throw new NotImplementedException();
-    }
-
-    public void SetSuperpixels(ref List<CIELABXYCenter> clusterCenters)
-    {
-        _superpixels = new List<Superpixel>();
+        
         foreach (CIELABXYCenter cc in clusterCenters)
         {
-            Superpixel s = new Superpixel(cc.X, cc.Y, cc.RGB, _superpixels.Count);
+
             foreach (CIELABXY c in cc.Region)
             {
-                s.Pixels.Add(new RegionPixel(c.X, c.Y, c.RGB));
+                if (c.X * c.Y == 0) continue;
+
+                int curLabel = c.label;
+
+                int left = pixels5D[c.X - 1, c.Y].label;
+                if (left != curLabel)
+                {
+                    pixels5D[c.X - 1, c.Y].label = curLabel;
+                }
+
+                int bottom = pixels5D[c.X, c.Y - 1].label;
+                if(bottom != curLabel)
+                {
+                    pixels5D[c.X, c.Y - 1].label = curLabel;
+                }
+
+                int botLeft = pixels5D[c.X - 1, c.Y - 1].label;
+                if (botLeft != curLabel)
+                {
+                    pixels5D[c.X - 1, c.Y - 1].label = curLabel;
+                }
+
+
             }
-            _superpixels.Add(s);
-            //Debug.Log("Superpixels " + count + ": " + _superpixels[count].Pixels.Count);
+
         }
-        //Debug.Log("Superpixels: " + _superpixels.Count);
+
+    }
+
+    public void SetSuperpixels(ref CIELABXY[,] pixels5D, int superpixelCount)
+    {
+        _superpixels = new List<Superpixel>(superpixelCount);
+        for (int i = 0; i < superpixelCount; i++)
+        {
+            _superpixels.Add(new Superpixel(i));
+
+        }
+
+        for (int i = 0; i < _width; i++)
+        {
+            for (int j = 0; j < _height; j++)
+            {
+                _superpixels[pixels5D[i, j].label].Pixels.Add(new RegionPixel(i, j, pixels5D[i, j].RGB));
+            }
+        }
+
+        foreach (Superpixel s in _superpixels)
+        {
+            s.Average();
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightShift))
+        {
+            foreach (Superpixel s in _superpixels)
+            {
+                Debug.Log(s.Pixels.Count);
+            }
+        }
+
     }
 
     public List<CIELABXYCenter> RunSLICSegmentation(Vector3[,] pixels, out List<Superpixel> superpixels)
     {
         _width = (uint)pixels.GetLength(0);
         _height = (uint)pixels.GetLength(1);
+        _labelIndexPair = new Dictionary<int, int>();
 
         float residualError = float.MaxValue;
-        List<CIELABXY> pixel5Ds;
+        CIELABXY[,] pixels5D = new CIELABXY[_width, _height];
         List<CIELABXYCenter> clusterCenters;
-        InitClusterCenters(ref pixels, out clusterCenters, out pixel5Ds);
+        InitClusterCenters(ref pixels, out clusterCenters, ref pixels5D);
         //PertubClusterCentersToLowestGradient(imageBuffer, ref clusterCenters);
 
         int count = MaxIterations;
         while (count > 0)
         {
-            for (int i = 0; i < pixel5Ds.Count; i++)
+            for (int i = 0; i < _width; i++)
             {
-                AssignToNearestClusterCenter(ref clusterCenters, pixel5Ds[i]);
-
+                for (int j = 0; j < _height; j++)
+                {
+                    AssignToNearestClusterCenter(ref clusterCenters, pixels5D[i, j]);
+                }
             }
             residualError = ComputeNewClusterCenters(ref clusterCenters);
             //Debug.Log("ResidualError " + residualError);
             count--;
         }
 
-        //EnforeConnectivity();
+        //EnforeConnectivity(ref pixels5D, ref clusterCenters);
 
-        SetSuperpixels(ref clusterCenters);
+        SetSuperpixels(ref pixels5D, clusterCenters.Count);
         superpixels = _superpixels;
         return clusterCenters;
     }

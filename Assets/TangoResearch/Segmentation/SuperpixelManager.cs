@@ -3,27 +3,34 @@ using System.Collections;
 using UnityEngine.UI;
 using Tango;
 using System.Collections.Generic;
+using System.Threading;
 
 public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle
 {
 
     public enum SuperpixelMethod { SLIC, CWATERSHED };
-    public enum DisplayClusterMode { BORDER, MOSAIC };
+    public enum DisplayClusterMode { BORDER, MOSAIC, SUPERPIXEL_MEAN };
     public SuperpixelMethod _CurSuperpixelMethod = SuperpixelMethod.SLIC;
     public DisplayClusterMode _CurDisplayClusterMode = DisplayClusterMode.BORDER;
 
     public Transform _PanelOptionsSLIC;
     public Transform _PanelOptionsWatershed;
 
+    public Toggle _ToggleRealtime;
     public Toggle _ToggleSLIC;
     public Toggle _ToggleCWatershed;
     public Toggle _ToggleDMBorder;
     public Toggle _ToggleDMMosaic;
+    public Toggle _ToggleDMSuperpixelMean;
+    public Toggle _ToggleMerger;
 
     public Slider _SliderClusterCount;
     public Slider _SliderResDiv;
+    public Slider _SliderMaxIterations;
     public Slider _SliderBorderThreshold;
     public Slider _SliderCompactness;
+    public Slider _SliderTd;
+    public Slider _SliderTc;
 
     private TangoApplication _tangoApplication;
 
@@ -37,11 +44,22 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private SuperpixelMerger _Merger;
 
     public int _ClusterCount = 32;
-    public int _MaxIterations = 1;
+    private int _maxIterations = 1;
     public int _ResDiv = 16;
     public float _ErrorThreshold = 0.001f;
     public int _BorderThreshold = 6;
     public int _Compactness = 10;
+
+    private static int _rSliderClusterCountMax = 128;
+    private static int _sliderClusterCountMax = 400;
+    private static int _rSliderResLevelMax = 9;
+    private static int _sliderResLevelMax = 11;
+
+    private bool _realtime = true;
+    private bool _mergeSuperpixels = false;
+    private bool _superpixelSegmentationRunning = false;
+    private float _Td = 64;
+    private float _Tc = 32;
 
     private Dictionary<int, Color> _regionColors = new Dictionary<int, Color>();
 
@@ -49,16 +67,21 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     public void Start()
     {
+        _ToggleRealtime.onValueChanged.AddListener(value => onValueChangedRealtime(value));
         _ToggleSLIC.onValueChanged.AddListener(value => onValueChangedSuperpixelMethod(value, SuperpixelMethod.SLIC));
         _ToggleCWatershed.onValueChanged.AddListener(value => onValueChangedSuperpixelMethod(value, SuperpixelMethod.CWATERSHED));
         _ToggleDMBorder.onValueChanged.AddListener(value => onValueChangedDisplayClusterMode(value, DisplayClusterMode.BORDER));
         _ToggleDMMosaic.onValueChanged.AddListener(value => onValueChangedDisplayClusterMode(value, DisplayClusterMode.MOSAIC));
-
+        _ToggleDMSuperpixelMean.onValueChanged.AddListener(value => onValueChangedDisplayClusterMode(value, DisplayClusterMode.SUPERPIXEL_MEAN));
+        _ToggleMerger.onValueChanged.AddListener(value => onValueChangedMerger(value));
 
         _SliderResDiv.onValueChanged.AddListener(onValueChangedResDiv);
         _SliderClusterCount.onValueChanged.AddListener(onValueChangedClusterCount);
+        _SliderMaxIterations.onValueChanged.AddListener(onValueChangedMaxIterations);
         _SliderBorderThreshold.onValueChanged.AddListener(onValueChangedBorderThreshold);
         _SliderCompactness.onValueChanged.AddListener(onValueChangedCompactness);
+        _SliderTd.onValueChanged.AddListener(onValueChangedTd);
+        _SliderTc.onValueChanged.AddListener(onValueChangedTc);
 
         _tangoApplication = FindObjectOfType<TangoApplication>();
         if (_tangoApplication != null)
@@ -80,12 +103,75 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         _Watershed._BorderThreshold = _BorderThreshold;
 
         _SLIC = new SLICSegmentation();
-        _SLIC.MaxIterations = _MaxIterations;
+        _SLIC.MaxIterations = _maxIterations;
         _SLIC.ResidualErrorThreshold = _ErrorThreshold;
         _SLIC.Compactness = _Compactness;
 
         _Merger = GetComponent<SuperpixelMerger>();
+        
+    }
 
+
+    private void Update()
+    {
+        if (Input.touchCount == 1)
+        {
+            Touch t = Input.GetTouch(0);
+            if (t.phase != TouchPhase.Began || UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(t.fingerId))
+            {
+                return;
+            }
+            if (!_realtime)
+            {
+                StartCoroutine(superpixelSegmentationRoutine());
+            }
+        }
+        else if (Input.GetMouseButtonDown(1))
+        {
+            if (!_realtime)
+            {
+                StartCoroutine(superpixelSegmentationRoutine());
+                
+            }
+        }
+        
+    }
+
+
+    private void onValueChangedRealtime(bool value)
+    {
+        _realtime = value;
+        if (!_realtime)
+        {
+            MessageManager._MessageManager.PushMessage("Tap screen to render superpixels.", 3);
+            _SliderResDiv.maxValue = _sliderResLevelMax;
+            _SliderClusterCount.maxValue = _sliderClusterCountMax;
+        }
+        else
+        {
+            _maxIterations = 1;
+            _SliderResDiv.maxValue = _rSliderResLevelMax;
+            _SliderClusterCount.maxValue = _rSliderClusterCountMax;
+        }
+    }
+
+    private void onValueChangedTc(float value)
+    {
+        _Tc = value;
+        _Merger.Tc = _Tc;
+    }
+
+    private void onValueChangedTd(float value)
+    {
+        _Td = value;
+        _Merger.Td = _Td;
+    }
+
+    private void onValueChangedMerger(bool value)
+    {
+        _mergeSuperpixels = value;
+        _SliderTd.interactable = _mergeSuperpixels;
+        _SliderTc.interactable = _mergeSuperpixels;
     }
 
     private void onValueChangedSuperpixelMethod(bool value, SuperpixelMethod superpixelMethod)
@@ -134,6 +220,13 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         _Watershed._ClusterCount = _ClusterCount;
     }
 
+    private void onValueChangedMaxIterations(float value)
+    {
+        _maxIterations = (int)value;
+        _SLIC.MaxIterations = _maxIterations;
+    }
+
+
     private void onValueChangedBorderThreshold(float value)
     {
         _BorderThreshold = (int)value;
@@ -154,75 +247,8 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         return col;
     }
 
-    private void doCompactWatershed()
+    private void drawSuperPixels(ref List<Superpixel> superpixels)
     {
-        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        List<Superpixel> superpixels;
-        int[,] S = _Watershed.Run(pixels, out superpixels);
-
-        int before = superpixels.Count;
-        superpixels = _Merger.MergeSuperpixels(superpixels);
-
-        Debug.Log("Superpixels before: " + before + "  after: " + superpixels.Count);
-
-        if (_CurDisplayClusterMode == DisplayClusterMode.BORDER)
-        {
-            for (int i = 0; i < _OutTexture.width; i++)
-            {
-                for (int j = 0; j < _OutTexture.height; j++)
-                {
-                    if (!_regionColors.ContainsKey(-S[i, j]))
-                    {
-                        _regionColors.Add(-S[i, j], RandomColor());
-                    }
-
-
-                    if (S[i, j] == -1)
-                    {
-                        _OutTexture.SetPixel(i, _OutTexture.height - j, Color.red);
-                    }
-                    else
-                    {
-                        _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
-                    }
-
-                }
-            }
-        }
-        else // Mosaic
-        {
-
-            int count = 0;
-            foreach (Superpixel s in superpixels)
-            {
-                if (!_regionColors.ContainsKey(count))
-                {
-                    _regionColors.Add(count, RandomColor());
-                }
-                foreach (RegionPixel p in s.Pixels)
-                {
-
-                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[count]);
-                }
-                count++;
-            }
-        }
-
-        _OutTexture.Apply();
-        _ResultMat.mainTexture = _OutTexture;
-    }
-
-    private void doSLIC()
-    {
-        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        List<Superpixel> superpixels;
-        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
-        int before = superpixels.Count;
-        superpixels = _Merger.MergeSuperpixels(superpixels);
-
-        Debug.Log("Superpixels before: " + before + "  after: " + superpixels.Count);
-
-
         foreach (Superpixel s in superpixels)
         {
             if (!_regionColors.ContainsKey(s.Label))
@@ -237,11 +263,18 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                     tempTex.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
                 }
             }
-            else // Mosaic
+            else if (_CurDisplayClusterMode == DisplayClusterMode.MOSAIC)
             {
                 foreach (RegionPixel p in s.Pixels)
                 {
                     _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
+                }
+            }
+            else // Superpixel Mean
+            {
+                foreach (RegionPixel p in s.Pixels)
+                {
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(s.R / 255f, s.G / 255f, s.B / 255f));
                 }
             }
         }
@@ -262,13 +295,42 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         }
 
         _OutTexture.Apply();
+    }
+
+    private void doCompactWatershed()
+    {
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        pixels = TangoHelpers.MedianFilter3x3(ref pixels);
+        List<Superpixel> superpixels;
+        int[,] S = _Watershed.Run(pixels, out superpixels);
+
+        if (_mergeSuperpixels)
+        {
+            superpixels = _Merger.MergeSuperpixels(superpixels);
+        }
+
+        drawSuperPixels(ref superpixels);
         _ResultMat.mainTexture = _OutTexture;
     }
 
-    public void OnTangoImageAvailableEventHandler(TangoEnums.TangoCameraId cameraId, TangoUnityImageData imageBuffer)
+    private void doSLIC()
     {
-        _lastImageBuffer = imageBuffer;
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        pixels = TangoHelpers.MedianFilter3x3(ref pixels);
+        List<Superpixel> superpixels;
+        List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
 
+        if (_mergeSuperpixels)
+        {
+            superpixels = _Merger.MergeSuperpixels(superpixels);
+        }
+
+        drawSuperPixels(ref superpixels);
+        _ResultMat.mainTexture = _OutTexture;
+    }
+
+    private void superpixelSegmentation()
+    {
         switch (_CurSuperpixelMethod)
         {
             case SuperpixelMethod.SLIC:
@@ -279,6 +341,23 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                 break;
             default:
                 break;
+        }
+    }
+
+    private IEnumerator superpixelSegmentationRoutine()
+    {
+        MessageManager._MessageManager.PushMessage("Performing Superpixel Segmentation ...");
+        yield return null;
+        superpixelSegmentation();
+    }
+
+    public void OnTangoImageAvailableEventHandler(TangoEnums.TangoCameraId cameraId, TangoUnityImageData imageBuffer)
+    {
+        _lastImageBuffer = imageBuffer;
+
+        if (_realtime)
+        {
+            superpixelSegmentation();
         }
 
     }

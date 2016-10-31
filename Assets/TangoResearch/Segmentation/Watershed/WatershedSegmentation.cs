@@ -119,7 +119,16 @@ public class WatershedSegmentation {
             {
                 int xn = x + i - 1;
                 int yn = y + j - 1;
-                gX += TangoHelpers.Grayscale(pixels[xn, yn]) * HSobelKernel[i,j];
+                try
+                {
+                    gX += TangoHelpers.Grayscale(pixels[xn, yn]) * HSobelKernel[i, j];
+                }
+                catch (Exception)
+                {
+                    Debug.Log("Index error: " + xn + "x" + yn);
+                    throw;
+                }
+                
             }
         }
 
@@ -203,6 +212,29 @@ public class WatershedSegmentation {
         return true;
     }
 
+    private VectorInt2 LowestGradient(ref Vector3[,] pixels, int x, int y)
+    {
+        VectorInt2 result = new VectorInt2(x, y);
+        int lowestGraient = int.MaxValue;
+
+        for (int i = -1; i <= 1; i++)
+        {
+            for (int j = -1; j <= 1; j++)
+            {
+                if (S[x + i, y + j] == -1 || (i + j == 0) )
+                    continue;
+                int gradient = Gradient(ref pixels, x + i, y + i);
+                if (gradient < lowestGraient)
+                {
+                    result.X = x + i;
+                    result.Y = y + i;
+                }
+            }
+        }
+
+        return result;
+    }
+
     public void SetupWatersheds(ref Vector3[,] pixels)
     {
         S = new int[_width, _height];
@@ -223,7 +255,11 @@ public class WatershedSegmentation {
         for (int i = 0; i < _width; i++)
         {
             S[i, 0] = -1;
+            S[i, 1] = -1;
             S[i, _height - 1] = -1;
+
+            
+            //S[i, _height - 3] = -1;
         }
 
 
@@ -236,17 +272,18 @@ public class WatershedSegmentation {
         _labelIndexPair = new Dictionary<int, int>();
         _superpixels = new List<Superpixel>();
         int count = 1;
-        for (int i = 1; i < _width; i+=(int)gridInterval)
+        for (int i = (int)(gridInterval/2); i < _width; i+=(int)gridInterval)
         {
-            for (int j = 1; j < _height; j+=(int)gridInterval)
+            for (int j = (int)(gridInterval / 2); j < _height; j+=(int)gridInterval)
             {
                 if (S[i, j] != -1)
                 {
-                    //S[i, j] = Gradient(ref pixels, i, j);
-                    
                     _labelIndexPair.Add(count, _labelIndexPair.Count);
-                    _superpixels.Add(new Superpixel(i, j, pixels[i, j], count));
-                    S[i, j] = count++;
+
+                    // Perturb to the lowest gradient in the 3x3 pixel neighborhood.
+                    VectorInt2 lowestGradient = LowestGradient(ref pixels, i, j);
+                    _superpixels.Add(new Superpixel(lowestGradient.X, lowestGradient.Y, pixels[lowestGradient.X, lowestGradient.Y], count));
+                    S[lowestGradient.X, lowestGradient.Y] = count++;
                 }
             }
         }
@@ -397,6 +434,10 @@ public class WatershedSegmentation {
                 }
 
             }
+        }
+        foreach (Superpixel s in _superpixels)
+        {
+            s.Average();
         }
     }
 

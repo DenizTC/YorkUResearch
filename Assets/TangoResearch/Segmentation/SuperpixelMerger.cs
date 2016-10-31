@@ -50,79 +50,94 @@ public class SuperpixelMerger : MonoBehaviour {
         }
     }
 
-    private void ComputePixelDistanceThreshold()
+    private void ComputeHSVs(ref List<Superpixel> superpixels)
     {
-        throw new NotImplementedException();
+        foreach (Superpixel s in superpixels)
+        {
+            float H, S, V;
+            Color.RGBToHSV(new Color(s.R/255f, s.G/255f, s.B/255f), out H, out S, out V);
+            s.HSV = new Vector3(H, S, V);
+        }
     }
 
-    private void ComputeColorDistanceThreshold()
+    private float ComputePixelDistanceThreshold(ref List<Superpixel> superpixels, Superpixel p)
     {
-        throw new NotImplementedException();
+        float ave = 0;
+
+        int count = 0;
+        foreach (Superpixel s in superpixels)
+        {
+            if (s.Label != p.Label)
+            {
+                ave += PixelDistance(p, s);
+                count++;
+            }
+        }
+
+        ave /= count;
+        return ave;
+    }
+
+    private float ComputeColorDistanceThreshold(ref List<Superpixel> superpixels, Superpixel p)
+    {
+        float ave = 0;
+
+        int count = 0;
+        foreach (Superpixel s in superpixels)
+        {
+            if (s.Label != p.Label)
+            {
+                ave += ColorDistance(p, s);
+                count++;
+            }
+        }
+
+        ave /= count;
+        return ave;
+    }
+
+    private float PixelDistance(Superpixel p, Superpixel q)
+    {
+        return Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(q.X, q.Y));
+    }
+
+    private float ColorDistance(Superpixel p, Superpixel q)
+    {
+        float Dcol = Mathf.Pow((p.HSV.y * p.HSV.z * Mathf.Cos(p.HSV.x * Mathf.Deg2Rad)) - (q.HSV.y * q.HSV.z * Mathf.Cos(q.HSV.x * Mathf.Deg2Rad)), 2) +
+            Mathf.Pow((p.HSV.y * p.HSV.z * Mathf.Sin(p.HSV.x * Mathf.Deg2Rad)) - (q.HSV.y * q.HSV.z * Mathf.Sin(q.HSV.x * Mathf.Deg2Rad)), 2) +
+            Mathf.Pow(p.HSV.z - q.HSV.z, 2);
+        Dcol = Mathf.Pow(Dcol, 0.5f);
+        Dcol *= 100;
+        return Dcol;
     }
 
     /// <summary>
     /// Checks if p belongs to q.
     /// </summary>
-    public bool BelongsToRegion(Superpixel p, Superpixel q)
+    public bool BelongsToRegion(ref List<Superpixel> superpixels, Superpixel p, Superpixel q)
     {
         if (p.Label == q.Label)
             return false;
 
-        float Dxy = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(q.X, q.Y));
+        float Dxy = PixelDistance(p, q);
+        Td = ComputePixelDistanceThreshold(ref superpixels, q);
+        if (Dxy > Td)
+            return false;
+
+        float Dcol = ColorDistance(p, q);
+        Tc = ComputeColorDistanceThreshold(ref superpixels, q);
+        if (Dcol > Tc)
+            return false;
+
         if (Input.GetKeyDown(KeyCode.Space))
         {
-
-            Debug.Log(Dxy);
+            Debug.Log((int)Dxy + " " + Dcol);
+            //Debug.Log("Phsv: " + p.HSV.x + ":" + p.HSV.y + ":" + p.HSV.z + " Qhsv: " + q.HSV.x + ":" + q.HSV.y + ":" + q.HSV.z);
         }
-
-
-        if (Dxy > Td)
-            return false;
-
-        float Dcol = Vector3.Distance(new Vector3(p.R, p.G, p.B), new Vector3(q.R, q.G, q.B));
-        if (Dcol > Tc)
-            return false;
-
-        
-
-        return true;
-
-        float Dnorm = Vector3.Distance(p.Normal, q.Normal);
-        if (Dnorm > Etheta)
-            return false;
-
-        return true;
-    }
-
-    /// <summary>
-    /// Checks if p belongs to q.
-    /// </summary>
-    public bool BelongsToRegion(Superpixel p, Superpixel q, ref Dictionary<int, Superpixel> labelSuperpixelPair)
-    {
-        if (!labelSuperpixelPair.ContainsKey(p.Label) && !labelSuperpixelPair.ContainsKey(q.Label))
-            return false;
-
-        if (p.Label == q.Label)
-            return false;
-           
-        float Dxy = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(q.X, q.Y));
-        if (Dxy > Td)
-            return false;
-
-        float Dcol = Vector3.Distance(new Vector3(p.R, p.G, p.B), new Vector3(q.R, q.G, q.B));
-        if (Dcol > Tc)
-            return false;
-
-        if (Input.GetMouseButtonDown(1))
-        {
-            Debug.Log(Dxy + " " + Dcol);
-        }
-
-        return true;
-
-        float Dnorm = Vector3.Distance(p.Normal, q.Normal);
-        if (Dnorm > Etheta)
-            return false;
+                
+        //float Dnorm = Vector3.Distance(p.Normal, q.Normal);
+        //if (Dnorm > Etheta)
+        //    return false;
 
         return true;
     }
@@ -130,14 +145,16 @@ public class SuperpixelMerger : MonoBehaviour {
     public List<Superpixel> MergeSuperpixels(List<Superpixel> superpixels)
     {
         ComputeSurfaceNormals(ref superpixels);
-        
+        ComputeHSVs(ref superpixels);
+
+
         Stack<Superpixel> a = new Stack<Superpixel>();
         Stack<Superpixel> b = new Stack<Superpixel>();
         foreach (Superpixel s in superpixels)
         {
             a.Push(s);
         }
-
+        
         List<Superpixel> sp = new List<Superpixel>();
         while (a.Count > 0)
         {
@@ -146,7 +163,7 @@ public class SuperpixelMerger : MonoBehaviour {
             while (a.Count > 0)
             {
                 Superpixel bCur = a.Pop();
-                if (BelongsToRegion(bCur, aCur))
+                if (BelongsToRegion(ref superpixels, bCur, aCur))
                 {
                     aCur.Pixels.AddRange(bCur.Pixels);
                 }

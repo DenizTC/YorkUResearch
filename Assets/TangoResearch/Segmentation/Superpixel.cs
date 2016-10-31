@@ -5,10 +5,17 @@ using System.Collections.Generic;
 public class Superpixel : RegionPixel {
 
     public int Label;
-
+    public Vector3 HSV;
     public Vector3 Normal;
 
     public List<RegionPixel> Pixels = new List<RegionPixel>();
+
+    public Superpixel() : base() { }
+
+    public Superpixel(int label) : this()
+    {
+        this.Label = label;
+    }
 
     public Superpixel(int x, int y, Vector3 rgb, int label) : base(x, y, rgb)
     {

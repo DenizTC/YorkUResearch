@@ -65,6 +65,76 @@ public static class TangoHelpers {
         return luma;
     }
 
+    private static float[] SortedWindow = new float[9];
+
+    private static float quant(float x)
+    {
+        x = Mathf.Clamp(x, 0f, 1f);
+        return Mathf.Floor(x * 255f);
+    }
+
+    private static float pack(Vector3 c)
+    {
+        float lum = (c.x + c.y + c.z) * (1.0f / 3.0f);
+
+        return quant(c.x) + quant(c.y)*256f + quant(lum) * 65536f;
+
+    }
+
+    private static Vector3 unpack(float x)
+    {
+        float lum = Mathf.Floor(x * (1f/65536f)) * (1f/255f);
+	    Vector3 c = Vector3.zero;
+	    c.x = Mathf.Floor(x % 256f) 			* (1f/255f);
+	    c.y = Mathf.Floor((x*(1f/256f)%256f)) * (1f / 255f);
+	    c.z = lum * 3f - c.y - c.x;
+	    return c;
+    }
+
+    private static void Swap(int a, int b)
+    {
+        float temp = Mathf.Max(SortedWindow[a], SortedWindow[b]);
+        SortedWindow[a] = Mathf.Min(SortedWindow[a], SortedWindow[b]);
+        SortedWindow[b] = temp;
+    }
+
+    private static Vector3 MedianSort3x3(ref Vector3[,] pixels, int x, int y)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                SortedWindow[i * 3 + j] = pack(pixels[x + i - 1, y + j - 1] / 255f);
+            }
+        }
+
+        // Sorting network generated from: http://pages.ripco.net/~jgamble/nw.html
+        Swap(0, 1); Swap(3, 4); Swap(6, 7);
+        Swap(1, 2); Swap(4, 5); Swap(7, 8);
+        Swap(0, 1); Swap(3, 4); Swap(6, 7); Swap(0, 3);
+        Swap(3, 6); Swap(0, 3); Swap(1, 4);
+        Swap(4, 7); Swap(1, 4); Swap(2, 5);
+        Swap(5, 8); Swap(2, 5); Swap(1, 3); Swap(5, 7);
+        Swap(2, 6); Swap(4, 6);
+        Swap(2, 4); Swap(2, 3);
+        Swap(5, 6);
+
+        return unpack(SortedWindow[4]) * 255f;
+    }
+
+    public static Vector3[,] MedianFilter3x3(ref Vector3[,] pixels)
+    {
+        Vector3[,] result = new Vector3[pixels.GetLength(0), pixels.GetLength(1)];
+        for (int i = 1; i < pixels.GetLength(0) - 1; i++)
+        {
+            for (int j = 1; j < pixels.GetLength(1) - 1; j++)
+            {
+                result[i, j] = MedianSort3x3(ref pixels, i, j);
+            }
+        }
+        return result;
+    }
+
     public static Vector3[,] ImageBufferToArray(TangoUnityImageData imageBuffer, uint resDiv = 8, bool convertToRGB = true)
     {
         uint _width = imageBuffer.width / resDiv;
