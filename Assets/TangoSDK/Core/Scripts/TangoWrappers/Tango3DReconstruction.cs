@@ -577,7 +577,7 @@ namespace Tango
         {
             if (m_context == IntPtr.Zero)
             {
-                Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
+                //Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
                 return;
             }
 
@@ -636,7 +636,7 @@ namespace Tango
 
             if (m_context == IntPtr.Zero)
             {
-                Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
+                //Debug.Log("Update called before creating a reconstruction context." + Environment.StackTrace);
                 return;
             }
 

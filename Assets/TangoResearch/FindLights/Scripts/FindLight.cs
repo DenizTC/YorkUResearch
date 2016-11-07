@@ -224,7 +224,7 @@ public class FindLight : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle, ITa
                 int jS = j * wS;
 
                 Vector3 yuv = TangoHelpers.GetYUV(imageBuffer, jS, iS);
-                Vector3 rgb = TangoHelpers.YUVToRGB(yuv);
+                Vector3 rgb = ImageProcessing.YUVToRGB(yuv);
 
                 if (yuv.x / 255f > threshold)
                 {

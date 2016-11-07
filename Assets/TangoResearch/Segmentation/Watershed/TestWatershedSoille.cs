@@ -72,7 +72,7 @@ public class TestWatershedSoille : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         {
             for (int j = 0; j < _OutTexture.height; j++)
             {
-                _OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(pixels[i, j]) / 255f);
+                _OutTexture.SetPixel(i, _OutTexture.height - j, ImageProcessing.Vector3ToColor(pixels[i, j]) / 255f);
                 //_OutTexture.SetPixel(i, _OutTexture.height - j, TangoHelpers.Vector3ToColor(new Vector3(S[i, j], S[i, j], S[i, j])) / 255f);
                 //if (S[i, j] == -1)
                 //{

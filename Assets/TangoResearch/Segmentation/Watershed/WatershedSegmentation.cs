@@ -121,11 +121,11 @@ public class WatershedSegmentation {
                 int yn = y + j - 1;
                 try
                 {
-                    gX += TangoHelpers.Grayscale(pixels[xn, yn]) * HSobelKernel[i, j];
+                    gX += ImageProcessing.Grayscale(pixels[xn, yn]) * HSobelKernel[i, j];
                 }
                 catch (Exception)
                 {
-                    Debug.Log("Index error: " + xn + "x" + yn);
+                    Debug.Log("Index error: " + xn + "x" + yn + " - Pixels[] size: " + pixels.GetLength(0) + "x" + pixels.GetLength(1));
                     throw;
                 }
                 
@@ -140,7 +140,7 @@ public class WatershedSegmentation {
             {
                 int xn = x + i - 1;
                 int yn = y + j - 1;
-                gY += TangoHelpers.Grayscale(pixels[xn, yn]) * VSobelKernel[i, j];
+                gY += ImageProcessing.Grayscale(pixels[xn, yn]) * VSobelKernel[i, j];
             }
         }
 
@@ -223,11 +223,11 @@ public class WatershedSegmentation {
             {
                 if (S[x + i, y + j] == -1 || (i + j == 0) )
                     continue;
-                int gradient = Gradient(ref pixels, x + i, y + i);
+                int gradient = Gradient(ref pixels, x + i, y + j);
                 if (gradient < lowestGraient)
                 {
                     result.X = x + i;
-                    result.Y = y + i;
+                    result.Y = y + j;
                 }
             }
         }
@@ -272,9 +272,9 @@ public class WatershedSegmentation {
         _labelIndexPair = new Dictionary<int, int>();
         _superpixels = new List<Superpixel>();
         int count = 1;
-        for (int i = (int)(gridInterval/2); i < _width; i+=(int)gridInterval)
+        for (int i = (int)(gridInterval/2); i < _width - 1; i+=(int)gridInterval)
         {
-            for (int j = (int)(gridInterval / 2); j < _height; j+=(int)gridInterval)
+            for (int j = (int)(gridInterval / 2); j < _height - 1; j+=(int)gridInterval)
             {
                 if (S[i, j] != -1)
                 {
@@ -292,9 +292,9 @@ public class WatershedSegmentation {
 
     public void InitProcessWatershedsAndFillQueues(ref Vector3[,] pixels)
     {
-        for (int i = 0; i < _width; i++)
+        for (int i = 0; i < _width - 1; i++)
         {
-            for (int j = 0; j < _height; j++)
+            for (int j = 0; j < _height - 1; j++)
             {
                 if (S[i, j] == 0)
                 {

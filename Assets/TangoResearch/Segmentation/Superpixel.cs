@@ -5,8 +5,11 @@ using System.Collections.Generic;
 public class Superpixel : RegionPixel {
 
     public int Label;
+    public float Intensity;
     public Vector3 HSV;
     public Vector3 Normal;
+    public Vector3 WorldPoint;
+    
 
     public List<RegionPixel> Pixels = new List<RegionPixel>();
 
@@ -26,6 +29,29 @@ public class Superpixel : RegionPixel {
     {
         Normal = normal;
         Label = label;
+    }
+
+    public void ComputeImageIntensity()
+    {
+        this.Intensity = ImageProcessing.Grayscale(new Vector3(this.R, this.G, this.B));
+    }
+
+    public void ComputeSurfaceNormal(int textureWidth, int textureHeight)
+    {
+        Normal = Vector3.zero;
+        RaycastHit hit;
+        float x = this.X * (Camera.main.pixelWidth / (float)textureWidth);
+        float y = Camera.main.pixelHeight - this.Y * (Camera.main.pixelHeight / (float)textureHeight);
+        //float x = X;
+        //float y = Y;
+        //Debug.Log(Input.mousePosition + " - " + x + "x" + y);
+        Ray ray = Camera.main.ScreenPointToRay(new Vector3(x, y, 0));
+        if (Physics.Raycast(ray, out hit, 10, 1 << GameGlobals.WalkableLayer))
+        {
+            //Debug.DrawRay(ray.origin, ray.direction, Color.blue);
+            Normal = hit.normal;
+            WorldPoint = hit.point;
+        }
     }
 
     public void Average()
@@ -55,5 +81,7 @@ public class Superpixel : RegionPixel {
         B = color.z;
 
     }
+
+    
 
 }

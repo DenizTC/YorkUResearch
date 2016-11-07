@@ -26,7 +26,7 @@ public static class TangoImageProcessing {
                 int jS = j * resolutionDiv;
 
                 Vector3 yuv = TangoHelpers.GetYUV(imageBuffer, jS, iS);
-                Vector3 rgb = TangoHelpers.YUVToRGB(yuv);
+                Vector3 rgb = ImageProcessing.YUVToRGB(yuv);
 
                 ave += rgb;
 

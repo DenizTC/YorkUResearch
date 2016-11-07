@@ -146,7 +146,7 @@ namespace Segmentation
             {
                 for (int y = 0; y < _pictureHeight; y++)
                 {
-                    int height = (int)TangoHelpers.Grayscale(data[x, y]);
+                    int height = (int)ImageProcessing.Grayscale(data[x, y]);
                     WatershedPixel p = new WatershedPixel(x, y, height);
                     // add every pixel to the pixel map
                     _pixelMap.Add(p.X.ToString() + "," + p.Y.ToString(), p);
