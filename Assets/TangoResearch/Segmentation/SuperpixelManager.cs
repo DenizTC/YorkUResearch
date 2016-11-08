@@ -211,13 +211,17 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         TangoCameraIntrinsics intrinsics = new TangoCameraIntrinsics();
         VideoOverlayProvider.GetIntrinsics(TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR, intrinsics);
-        _OutTexture = new Texture2D((int)(intrinsics.width / _ResDiv), (int)(intrinsics.height / _ResDiv), TextureFormat.RGBA32, false);
+        _OutTexture = new Texture2D((int)(intrinsics.width / (float)_ResDiv), (int)(intrinsics.height / (float)_ResDiv), TextureFormat.RGBA32, false);
         _OutTexture.filterMode = FilterMode.Point;
         _OutTexture.anisoLevel = 0;
 
-        tempTex = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
+        tempTex = new Texture2D((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv));
         tempTex.filterMode = FilterMode.Point;
         tempTex.mipMapBias = 0;
+
+        _IoTexture = new Texture2D((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv));
+        _IoTexture.filterMode = FilterMode.Point;
+        _IoTexture.mipMapBias = 0;
     }
 
     private void onValueChangedClusterCount(float value)
@@ -276,21 +280,52 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                     //Vector3 lightPos = Camera.main.transform.position;
 
                     
-                    Vector3 lightPos = Camera.main.transform.position - new Vector3(x - _lightErrorGrid.GetLength(0)/2f, y - _lightErrorGrid.GetLength(1) / 2f, z - _lightErrorGrid.GetLength(2) / 2f);
+                    Vector3 lightPos = Camera.main.transform.position + new Vector3(x - _lightErrorGrid.GetLength(0)/2f, y - _lightErrorGrid.GetLength(1) / 2f, z - _lightErrorGrid.GetLength(2) / 2f);
                     
-                    float error = IoIrL2Norm(ref superpixels, Io, lightPos);
+                    float error = IoIrL2Norm(ref superpixels, Io, lightPos) * 100000;
+                    _lightErrorGrid[x, y, z] = error;
+
                     if (error < _lightErrorGrid[minError.X, minError.Y, minError.Z])
                     {
                         minError = new VectorInt3(x, y, z);
                     }
 
-                    _lightErrorGrid[x,y,z] = error;
+                    
                 }
             }
         }
 
+        //Debug.Log("MinError " + minError.X + "x"+ minError.Y + "x" + minError.Z + ": " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
+        Vector3 estimatedLightPos = Camera.main.transform.position + 
+            new Vector3(minError.X - _lightErrorGrid.GetLength(0) / 2f,
+            minError.Y - _lightErrorGrid.GetLength(1) / 2f,
+            minError.Z - _lightErrorGrid.GetLength(2) / 2f);
 
-        return Camera.main.transform.position - new Vector3(minError.X - _lightErrorGrid.GetLength(0) / 2f, minError.Y - _lightErrorGrid.GetLength(1) / 2f, minError.Z - _lightErrorGrid.GetLength(2) / 2f);
+        //if (!_realtime)
+        //{
+        //    for (int x = 0; x < _lightErrorGrid.GetLength(0); x++)
+        //    {
+        //        for (int y = 0; y < _lightErrorGrid.GetLength(1); y++)
+        //        {
+                    
+        //            string s = "";
+        //            for (int z = 0; z < _lightErrorGrid.GetLength(2); z++)
+        //            {
+        //                s += _lightErrorGrid[x, y, z] + " : ";
+        //                Vector3 lPos = Camera.main.transform.position +
+        //                    new Vector3(x - _lightErrorGrid.GetLength(0) / 2f,
+        //                                y - _lightErrorGrid.GetLength(1) / 2f,
+        //                                z - _lightErrorGrid.GetLength(2) / 2f);
+        //                Debug.DrawRay(lPos, _DebugLightReceiver.position - lPos, Color.green, 1f);
+        //            }
+        //            Debug.Log(s);
+                    
+        //        }
+        //    }
+        //}
+
+
+        return estimatedLightPos;
     }
 
     private float IoIrL2Norm(ref List<Superpixel> superpixels, float[] Io, Vector3 lightPos)
