@@ -373,7 +373,30 @@ public class TangoARScreen : MonoBehaviour, ITangoLifecycle, ITangoCameraTexture
         }
         else
         {
-            Debug.LogError("AR Camera intrinsic is not valid.");
+            //Debug.LogError("AR Camera intrinsic is not valid.");
+            float widthRatio = (float)cameraWidth / (float)1280;
+            float heightRatio = (float)cameraHeight / (float)720;
+
+            if (widthRatio >= heightRatio)
+            {
+                m_uOffset = 0;
+                m_vOffset = (1 - (heightRatio / widthRatio)) / 2;
+            }
+            else
+            {
+                m_uOffset = (1 - (widthRatio / heightRatio)) / 2;
+                m_vOffset = 0;
+            }
+
+            // Note that here we are passing in non-inverted intrinsics, because the YUV conversion is still operating
+            // on native buffer layout.
+            OrientationManager.Rotation rotation = TangoSupport.RotateFromAToB(displayRotation, colorCameraRotation);
+            _MaterialUpdateForIntrinsics(m_uOffset, m_vOffset, rotation);
+            _CameraUpdateForIntrinsics(m_camera, alignedIntrinsics, m_uOffset, m_vOffset);
+            if (m_arCameraPostProcess != null)
+            {
+                m_arCameraPostProcess.SetupIntrinsic(intrinsics);
+            }
         }
     }
 

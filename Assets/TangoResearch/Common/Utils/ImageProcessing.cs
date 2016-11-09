@@ -14,6 +14,29 @@ public static class ImageProcessing {
         return col;
     }
 
+    public static Texture2D RenderTextureToTexture2D(RenderTexture rTex)
+    {
+        Texture2D texture2D = new Texture2D(rTex.width, rTex.height);
+        RenderTexture.active = rTex;
+        texture2D.ReadPixels(new Rect(0, 0, rTex.width, rTex.height), 0, 0);
+        texture2D.Apply();
+        return texture2D;
+    }
+
+    public static Vector3[,] RenderTextureToRGBArray(RenderTexture rTex)
+    {
+        Texture2D t = RenderTextureToTexture2D(rTex);
+        Vector3[,] c = new Vector3[t.width, t.height];
+        for (int i = 0; i < t.width; i++)
+        {
+            for (int j = 0; j < t.height; j++)
+            {
+                c[i, j] = ColorToVector3(t.GetPixel(i, j)) * 255;
+            }
+        }
+        return c;
+    }
+
     #endregion
 
     #region Converters
@@ -47,6 +70,12 @@ public static class ImageProcessing {
     public static Color Vector3ToColor(Vector3 v)
     {
         return new Color(v.x, v.y, v.z);
+    }
+
+    public static Vector3 ColorToVector3(Color c)
+    {
+        Vector3 result = new Vector3(c.r, c.g, c.b);
+        return result;
     }
 
     #endregion

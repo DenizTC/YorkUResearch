@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using Tango;
 using System.Collections.Generic;
 using System.Threading;
+using System;
 
 public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecycle
 {
@@ -34,6 +35,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     private TangoApplication _tangoApplication;
 
+    public RenderTexture _InTexture;
     public Texture2D _IoTexture; // Original intensity map. Used for visually comparing Io and Ir (reconstructed intensity) map.
     public Texture2D _OutTexture;
     private Texture2D tempTex;
@@ -335,13 +337,30 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         float dist = 0;
         for (int i = 0; i < superpixels.Count; i++)
         {
+            if (superpixels[i].Normal.magnitude <= 0)
+            {
+                continue;
+            }
+
             Vector3 lightDir = ImageProcessing.LightDirection(lightPos, superpixels[i].WorldPoint);
             float albedo = ImageProcessing.ComputeAlbedo(superpixels[i].Intensity, superpixels[i].Normal, lightDir);
             Ir[i] = ImageProcessing.ComputeImageIntensity(albedo, superpixels[i].Normal, lightDir);
 
+            if (!_realtime && Single.IsNaN(Ir[i]))
+            {
+                Debug.Log("Ir: " + Ir[i] + " albedo: " + albedo + " normal: " + superpixels[i].Normal + " lightDir: " + lightDir);
+            }
+
             dist += Mathf.Pow(Io[i] - Ir[i], 2);
         }
+        float distO = dist;
         dist = Mathf.Pow(dist, 0.5f);
+
+        //if (!_realtime)
+        //{
+        //    Debug.Log("DistO: " + distO + " dist: " + dist);
+        //}
+
         return dist;
     }
 
@@ -439,7 +458,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private Vector3 _estimatedLightPos = Vector3.zero;
     private void doSLIC()
     {
-        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+
         pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
         List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
