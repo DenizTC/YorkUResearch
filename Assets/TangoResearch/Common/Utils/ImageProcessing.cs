@@ -31,7 +31,7 @@ public static class ImageProcessing {
         {
             for (int j = 0; j < t.height; j++)
             {
-                c[i, j] = ColorToVector3(t.GetPixel(i, j)) * 255;
+                c[i, j] = ColorToVector3(t.GetPixel(i, t.height - j - 1)) * 255;
             }
         }
         return c;

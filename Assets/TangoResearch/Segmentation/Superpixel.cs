@@ -48,9 +48,10 @@ public class Superpixel : RegionPixel {
         Ray ray = Camera.main.ScreenPointToRay(new Vector3(x, y, 0));
         if (Physics.Raycast(ray, out hit, 10, 1 << GameGlobals.WalkableLayer))
         {
-            //Debug.DrawRay(ray.origin, ray.direction, Color.blue);
-            Normal = hit.normal;
+            Normal = Vector3.Normalize(hit.normal);
             WorldPoint = hit.point;
+            
+            
         }
     }
 

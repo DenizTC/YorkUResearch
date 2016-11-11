@@ -297,34 +297,35 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
             }
         }
 
-        //Debug.Log("MinError " + minError.X + "x"+ minError.Y + "x" + minError.Z + ": " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
+        Debug.Log("MinError " + minError.X + "x"+ minError.Y + "x" + minError.Z + ": " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
+
         Vector3 estimatedLightPos = Camera.main.transform.position + 
             new Vector3(minError.X - _lightErrorGrid.GetLength(0) / 2f,
             minError.Y - _lightErrorGrid.GetLength(1) / 2f,
             minError.Z - _lightErrorGrid.GetLength(2) / 2f);
 
-        //if (!_realtime)
-        //{
-        //    for (int x = 0; x < _lightErrorGrid.GetLength(0); x++)
-        //    {
-        //        for (int y = 0; y < _lightErrorGrid.GetLength(1); y++)
-        //        {
-                    
-        //            string s = "";
-        //            for (int z = 0; z < _lightErrorGrid.GetLength(2); z++)
-        //            {
-        //                s += _lightErrorGrid[x, y, z] + " : ";
-        //                Vector3 lPos = Camera.main.transform.position +
-        //                    new Vector3(x - _lightErrorGrid.GetLength(0) / 2f,
-        //                                y - _lightErrorGrid.GetLength(1) / 2f,
-        //                                z - _lightErrorGrid.GetLength(2) / 2f);
-        //                Debug.DrawRay(lPos, _DebugLightReceiver.position - lPos, Color.green, 1f);
-        //            }
-        //            Debug.Log(s);
-                    
-        //        }
-        //    }
-        //}
+        if (!_realtime)
+        {
+            for (int x = 0; x < _lightErrorGrid.GetLength(0); x++)
+            {
+                for (int y = 0; y < _lightErrorGrid.GetLength(1); y++)
+                {
+
+                    string s = "";
+                    for (int z = 0; z < _lightErrorGrid.GetLength(2); z++)
+                    {
+                        s += _lightErrorGrid[x, y, z] + " : ";
+                        //Vector3 lPos = Camera.main.transform.position +
+                        //    new Vector3(x - _lightErrorGrid.GetLength(0) / 2f,
+                        //                y - _lightErrorGrid.GetLength(1) / 2f,
+                        //                z - _lightErrorGrid.GetLength(2) / 2f);
+                        //Debug.DrawRay(lPos, _DebugLightReceiver.position - lPos, Color.green, 1f);
+                    }
+                    Debug.Log(s);
+
+                }
+            }
+        }
 
 
         return estimatedLightPos;
@@ -368,6 +369,13 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     {
         foreach (Superpixel s in superpixels)
         {
+            if (!_realtime)
+            {
+                Vector3 n = s.Normal * 0.1f;
+               
+                Debug.DrawRay(s.WorldPoint, n, Color.magenta, 3);
+            }
+
             if (!_regionColors.ContainsKey(s.Label))
             {
                 _regionColors.Add(s.Label, ImageProcessing.RandomColor());
@@ -391,11 +399,13 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                 {
                     //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
 
-                    //Vector3 n = (s.Normal + Vector3.one) / 2f; // Normalize between 0 and 1.
-                    //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(s.Intensity/255f,s.Intensity / 255f, s.Intensity / 255f));
+                    Vector3 n = s.Normal; // Normalize between 0 and 1.
+                    n += Vector3.one;
+                    n /= 2f;
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, ImageProcessing.Vector3ToColor(n));
 
                     _IoTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(s.Intensity / 255f, s.Intensity / 255f, s.Intensity / 255f));
-                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(albedo / 255f, albedo / 255f, albedo / 255f));
+                    //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(albedo / 255f, albedo / 255f, albedo / 255f));
                 }
             }
             else // Superpixel Mean
@@ -428,7 +438,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     private void doCompactWatershed()
     {
-        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+
         pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
         int[,] S = _Watershed.Run(pixels, out superpixels);
