@@ -24,6 +24,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     public Toggle _ToggleDMMosaic;
     public Toggle _ToggleDMSuperpixelMean;
     public Toggle _ToggleMerger;
+    public Toggle _ToggleDebugLights;
 
     public Slider _SliderClusterCount;
     public Slider _SliderResDiv;
@@ -32,6 +33,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     public Slider _SliderCompactness;
     public Slider _SliderTd;
     public Slider _SliderTc;
+    public Slider _SliderDebugLightX;
+    public Slider _SliderDebugLightY;
+    public Slider _SliderDebugLightZ;
 
     private TangoApplication _tangoApplication;
 
@@ -57,7 +61,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private static int _sliderClusterCountMax = 400;
     private static int _rSliderResLevelMax = 9;
     private static int _sliderResLevelMax = 11;
+    private VectorInt3 _debugLightPos = new VectorInt3(0, 0, 0);
 
+    private bool _debuggingLightPos = false;
     private bool _realtime = true;
     private bool _mergeSuperpixels = false;
     private float _Td = 64;
@@ -79,6 +85,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         _ToggleDMMosaic.onValueChanged.AddListener(value => onValueChangedDisplayClusterMode(value, DisplayClusterMode.MOSAIC));
         _ToggleDMSuperpixelMean.onValueChanged.AddListener(value => onValueChangedDisplayClusterMode(value, DisplayClusterMode.SUPERPIXEL_MEAN));
         _ToggleMerger.onValueChanged.AddListener(value => onValueChangedMerger(value));
+        _ToggleDebugLights.onValueChanged.AddListener(value => onValueChangedDebugLights(value));
 
         _SliderResDiv.onValueChanged.AddListener(onValueChangedResDiv);
         _SliderClusterCount.onValueChanged.AddListener(onValueChangedClusterCount);
@@ -87,6 +94,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         _SliderCompactness.onValueChanged.AddListener(onValueChangedCompactness);
         _SliderTd.onValueChanged.AddListener(onValueChangedTd);
         _SliderTc.onValueChanged.AddListener(onValueChangedTc);
+        _SliderDebugLightX.onValueChanged.AddListener(onValueChangedDebugLightX);
+        _SliderDebugLightY.onValueChanged.AddListener(onValueChangedDebugLightY);
+        _SliderDebugLightZ.onValueChanged.AddListener(onValueChangedDebugLightZ);
 
         _tangoApplication = FindObjectOfType<TangoApplication>();
         if (_tangoApplication != null)
@@ -118,6 +128,26 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         _Merger = GetComponent<SuperpixelMerger>();
         setupLightErrorGrid();
+    }
+
+    private void onValueChangedDebugLightX(float value)
+    {
+        _debugLightPos.X = (int)value;
+    }
+
+    private void onValueChangedDebugLightY(float value)
+    {
+        _debugLightPos.Y = (int)value;
+    }
+
+    private void onValueChangedDebugLightZ(float value)
+    {
+        _debugLightPos.Z = (int)value;
+    }
+
+    private void onValueChangedDebugLights(bool value)
+    {
+        _debuggingLightPos = value;
     }
 
     private void Update()
@@ -457,7 +487,20 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         }
 
-        _estimatedLightPos = lightEstimation(ref superpixels);
+        if (_debuggingLightPos)
+        {
+            Vector3 lightPos = Camera.main.transform.position + 
+                new Vector3(_debugLightPos.X - _lightErrorGrid.GetLength(0) / 2f,
+                _debugLightPos.Y - _lightErrorGrid.GetLength(1) / 2f,
+                _debugLightPos.Z - _lightErrorGrid.GetLength(2) / 2f);
+            _estimatedLightPos = lightPos;
+        }
+        else
+        {
+            _estimatedLightPos = lightEstimation(ref superpixels);
+        }
+        
+
         //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
         _DebugDirectionalLight.transform.position = _estimatedLightPos;
         _DebugDirectionalLight.transform.LookAt(_DebugLightReceiver);
@@ -488,7 +531,18 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
             s.ComputeSurfaceNormal(_OutTexture.width, _OutTexture.height);
         }
 
-        _estimatedLightPos = lightEstimation(ref superpixels);
+        if (_debuggingLightPos)
+        {
+            Vector3 lightPos = Camera.main.transform.position +
+                new Vector3(_debugLightPos.X - _lightErrorGrid.GetLength(0) / 2f,
+                _debugLightPos.Y - _lightErrorGrid.GetLength(1) / 2f,
+                _debugLightPos.Z - _lightErrorGrid.GetLength(2) / 2f);
+            _estimatedLightPos = lightPos;
+        }
+        else
+        {
+            _estimatedLightPos = lightEstimation(ref superpixels);
+        }
         //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
         _DebugDirectionalLight.transform.position = _estimatedLightPos;
         _DebugDirectionalLight.transform.LookAt(_DebugLightReceiver);
