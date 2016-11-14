@@ -1,15 +1,12 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 
 public class Superpixel : RegionPixel {
 
     public int Label;
-    public float Intensity;
-    public Vector3 HSV;
-    public Vector3 Normal;
-    public Vector3 WorldPoint;
-    
+    public Vector3 HSV;    
 
     public List<RegionPixel> Pixels = new List<RegionPixel>();
 
@@ -31,28 +28,95 @@ public class Superpixel : RegionPixel {
         Label = label;
     }
 
-    public void ComputeImageIntensity()
+    public Vector3 GetAverageNormal(int textureWidth, int textureHeight)
     {
-        this.Intensity = ImageProcessing.Grayscale(new Vector3(this.R, this.G, this.B));
+        Vector3 ave = Vector3.zero;
+        foreach (RegionPixel r in Pixels)
+        {
+            r.ComputeSurfaceNormal(textureWidth, textureHeight);
+            ave += r.Normal;
+        }
+        ave /= (float)Pixels.Count;
+        return ave;
     }
 
-    public void ComputeSurfaceNormal(int textureWidth, int textureHeight)
+    public float GetMedianNS(int textureWidth, int textureHeight, Vector3 lightPos)
     {
-        Normal = Vector3.zero;
-        RaycastHit hit;
-        float x = this.X * (Camera.main.pixelWidth / (float)textureWidth);
-        float y = Camera.main.pixelHeight - this.Y * (Camera.main.pixelHeight / (float)textureHeight);
-        //float x = X;
-        //float y = Y;
-        //Debug.Log(Input.mousePosition + " - " + x + "x" + y);
-        Ray ray = Camera.main.ScreenPointToRay(new Vector3(x, y, 0));
-        if (Physics.Raycast(ray, out hit, 10, 1 << GameGlobals.WalkableLayer))
+        if (Pixels.Count <= 0) return 0;
+
+        int count = 0;
+        int nCount = 0;
+        List<float> NS = new List<float>(Pixels.Count);
+        foreach (RegionPixel r in Pixels)
         {
-            Normal = Vector3.Normalize(hit.normal);
-            WorldPoint = hit.point;
-            
-            
+            r.ComputeImageIntensity(); // 255
+            if (!r.ComputeSurfaceNormal(textureWidth, textureHeight))
+            {
+                continue;
+            }
+            nCount++;
+
+            Vector3 lightDir = ImageProcessing.LightDirection(lightPos, r.WorldPoint);
+            float ns = Vector3.Dot(r.Normal, lightDir);
+            float ir = 0;
+            r.ComputeAlbedo(lightPos); // 255
+
+            if (ns <= 0)
+            {
+                continue;
+            }
+            NS.Add(ns);
+
+            count++;
         }
+        if (NS.Count <= 0) return 0;
+
+        NS.Sort();
+
+        float result = NS[count / 2];
+        //Debug.LogError("Pixels: " + Pixels.Count + " nCount: " + nCount + " Irs count: " + Irs.Count + " index: " + (count / 2));
+        //Debug.Log("Irs: " + result);
+        return result; // 255
+    }
+
+    public bool GetMedianSynthesizedIr(int textureWidth, int textureHeight, Vector3 lightPos, out float albedo, out float Ir)
+    {
+        albedo = 0;
+        Ir = 0;
+        if (Pixels.Count <= 0) return false;
+
+        int count = 0;
+        int nCount = 0;
+        List<Vector2> Irs = new List<Vector2>(Pixels.Count);
+        foreach (RegionPixel r in Pixels)
+        {
+            r.ComputeImageIntensity(); // 255
+            if (!r.ComputeSurfaceNormal(textureWidth, textureHeight)) continue;
+            nCount++;
+
+            Vector3 lightDir = ImageProcessing.LightDirection(lightPos, r.WorldPoint);
+            float ns = Vector3.Dot(r.Normal, lightDir);
+            ImageProcessing.ComputeAlbedo(r.Intensity / 255f, ns, out albedo);
+            //r.ComputeAlbedo(lightPos); // 1
+
+            if (ns <= 0) continue;
+
+            float ir = 0;
+            ImageProcessing.ComputeImageIntensity(albedo, ns, out ir);
+            Irs.Add(new Vector2(ir, albedo));
+
+            count++;
+        }
+        if (Irs.Count <= 0) return false;
+
+        Irs.OrderBy(v => v.x);
+
+        Ir = Irs[count / 2].x;
+        albedo = Irs[count / 2].y;
+
+        //Debug.Log("Median - Ir: " + result + " albedo: " + albedo);
+
+        return true;
     }
 
     public void Average()

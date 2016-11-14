@@ -164,21 +164,51 @@ public static class ImageProcessing {
 
     public static Vector3 LightDirection(Vector3 lightPos, Vector3 targetPos)
     {
-        return (lightPos - targetPos).normalized;
+        return (lightPos- targetPos).normalized;
     }
 
-    public static float ComputeImageIntensity(float albedo, Vector3 normal, Vector3 lightDir, float lightIntensity = 1)
+    public static bool ComputeImageIntensity(float albedo, Vector3 normal, Vector3 lightDir, out float intensity, float lightIntensity = 1)
     {
-        float ns = normal.x * lightDir.x + normal.y + lightDir.y + normal.z + lightDir.z;
-        return albedo * Mathf.Min(ns * lightIntensity, 0);
+        float ns = Vector3.Dot(normal, lightDir);
+        //intensity = albedo * Mathf.Min(ns, 0);
+        intensity = Mathf.Min(albedo * ns * lightIntensity, 1f);
+
+        return ns > 0;
     }
 
-    public static float ComputeAlbedo(float imageIntensity, Vector3 normal, Vector3 lightDir, float lightIntensity = 1)
+    public static bool ComputeImageIntensity(float albedo, float ns, out float intensity, float lightIntensity = 1)
     {
-        float ns = normal.x * lightDir.x + normal.y + lightDir.y + normal.z + lightDir.z;
-        float albedo = imageIntensity / (ns * lightIntensity);
+        intensity = Mathf.Min(albedo * ns*lightIntensity, 1f);
+        return ns > 0;
+    }
 
-        return albedo;
+    public static bool ComputeAlbedo(float imageIntensity, Vector3 normal, Vector3 lightDir, out float albedo, float lightIntensity = 1)
+    {
+        //float ns = normal.x * lightDir.x + normal.y*lightDir.y + normal.z*lightDir.z;
+        float ns = Vector3.Dot(normal, lightDir) * lightIntensity;
+        albedo = imageIntensity / ns;
+
+        if (albedo > 1)
+        {
+            albedo = 1;
+            //return false;
+        }
+
+        return ns > 0;
+    }
+
+    public static bool ComputeAlbedo(float imageIntensity, float ns, out float albedo, float lightIntensity = 1)
+    {
+        albedo = imageIntensity / ns*lightIntensity;
+
+
+        if (albedo > 1)
+        {
+            albedo = 1;
+            //return false;
+        }
+
+        return ns > 0;
     }
 
     #endregion

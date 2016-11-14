@@ -64,7 +64,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private VectorInt3 _debugLightPos = new VectorInt3(0, 0, 0);
 
     private bool _debuggingLightPos = false;
-    private bool _realtime = true;
+    private bool _realtime = false;
     private bool _mergeSuperpixels = false;
     private float _Td = 64;
     private float _Tc = 32;
@@ -73,7 +73,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     public Material _ResultMat;
     public Material _IoMat;
-    public Light _DebugDirectionalLight;
+    public Transform _DebugPointLight;
     public Transform _DebugLightReceiver;
 
     public void Start()
@@ -128,6 +128,9 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         _Merger = GetComponent<SuperpixelMerger>();
         setupLightErrorGrid();
+
+        _SliderResDiv.maxValue = _sliderResLevelMax;
+        _SliderClusterCount.maxValue = _sliderClusterCountMax;
     }
 
     private void onValueChangedDebugLightX(float value)
@@ -298,7 +301,7 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
         for (int i = 0; i < superpixels.Count; i++)
         {
-            Io[i] = superpixels[i].Intensity;
+            Io[i] = superpixels[i].Intensity/255f;
         }
 
         for (int x = 0; x < _lightErrorGrid.GetLength(0); x++)
@@ -307,14 +310,13 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
             {
                 for (int z = 0; z < _lightErrorGrid.GetLength(2); z++)
                 {
-
-                    // Assume position of point light source initially at camera origin.
-                    //Vector3 lightPos = Camera.main.transform.position;
-
                     
-                    Vector3 lightPos = Camera.main.transform.position + new Vector3(x - _lightErrorGrid.GetLength(0)/2f, y - _lightErrorGrid.GetLength(1) / 2f, z - _lightErrorGrid.GetLength(2) / 2f);
+                    Vector3 lightPos = Camera.main.transform.position + 
+                        new Vector3(x - _lightErrorGrid.GetLength(0)/2f, 
+                        y - _lightErrorGrid.GetLength(1) / 2f, 
+                        z - _lightErrorGrid.GetLength(2) / 2f);
                     
-                    float error = IoIrL2Norm(ref superpixels, Io, lightPos) * 100000;
+                    float error = IoIrL2Norm(ref superpixels, Io, lightPos);
                     _lightErrorGrid[x, y, z] = error;
 
                     if (error < _lightErrorGrid[minError.X, minError.Y, minError.Z])
@@ -327,37 +329,14 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
             }
         }
 
-        Debug.Log("MinError " + minError.X + "x"+ minError.Y + "x" + minError.Z + ": " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
+        //Debug.Log("MinError " + minError.X + "x"+ minError.Y + "x" + minError.Z + ": " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
 
         Vector3 estimatedLightPos = Camera.main.transform.position + 
             new Vector3(minError.X - _lightErrorGrid.GetLength(0) / 2f,
             minError.Y - _lightErrorGrid.GetLength(1) / 2f,
             minError.Z - _lightErrorGrid.GetLength(2) / 2f);
 
-        if (!_realtime)
-        {
-            for (int x = 0; x < _lightErrorGrid.GetLength(0); x++)
-            {
-                for (int y = 0; y < _lightErrorGrid.GetLength(1); y++)
-                {
-
-                    string s = "";
-                    for (int z = 0; z < _lightErrorGrid.GetLength(2); z++)
-                    {
-                        s += _lightErrorGrid[x, y, z] + " : ";
-                        //Vector3 lPos = Camera.main.transform.position +
-                        //    new Vector3(x - _lightErrorGrid.GetLength(0) / 2f,
-                        //                y - _lightErrorGrid.GetLength(1) / 2f,
-                        //                z - _lightErrorGrid.GetLength(2) / 2f);
-                        //Debug.DrawRay(lPos, _DebugLightReceiver.position - lPos, Color.green, 1f);
-                    }
-                    Debug.Log(s);
-
-                }
-            }
-        }
-
-
+        Debug.Log("LightPos: " + estimatedLightPos + " error: " + _lightErrorGrid[minError.X, minError.Y, minError.Z]);
         return estimatedLightPos;
     }
 
@@ -368,30 +347,38 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         float dist = 0;
         for (int i = 0; i < superpixels.Count; i++)
         {
-            if (superpixels[i].Normal.magnitude <= 0)
+            if (superpixels[i].Normal.magnitude <= 0 || superpixels[i].Pixels.Count < (_OutTexture.width*_OutTexture.height/(float)_ClusterCount/2f))
             {
                 continue;
             }
 
+            float albedo = 0;
+            float ir = 0;
             Vector3 lightDir = ImageProcessing.LightDirection(lightPos, superpixels[i].WorldPoint);
-            float albedo = ImageProcessing.ComputeAlbedo(superpixels[i].Intensity, superpixels[i].Normal, lightDir);
-            Ir[i] = ImageProcessing.ComputeImageIntensity(albedo, superpixels[i].Normal, lightDir);
-
-            if (!_realtime && Single.IsNaN(Ir[i]))
+            
+            if (ImageProcessing.ComputeAlbedo(Io[i], superpixels[i].Normal, lightDir, out albedo))
             {
-                Debug.Log("Ir: " + Ir[i] + " albedo: " + albedo + " normal: " + superpixels[i].Normal + " lightDir: " + lightDir);
+                ImageProcessing.ComputeImageIntensity(albedo, superpixels[i].Normal, lightDir, out ir);
             }
+            else
+            {
+                if (!superpixels[i].GetMedianSynthesizedIr(_OutTexture.width, _OutTexture.height, lightPos, out albedo, out ir))
+                {
+                    ir = 0;
+                }
+            }
+            
 
+            Ir[i] = ir;
             dist += Mathf.Pow(Io[i] - Ir[i], 2);
         }
-        float distO = dist;
         dist = Mathf.Pow(dist, 0.5f);
 
-        //if (!_realtime)
-        //{
-        //    Debug.Log("DistO: " + distO + " dist: " + dist);
-        //}
-
+        if (_debuggingLightPos)
+        {
+            Debug.Log("IoIr: " + dist);
+        }
+        
         return dist;
     }
 
@@ -399,12 +386,6 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     {
         foreach (Superpixel s in superpixels)
         {
-            if (!_realtime)
-            {
-                Vector3 n = s.Normal * 0.1f;
-               
-                Debug.DrawRay(s.WorldPoint, n, Color.magenta, 3);
-            }
 
             if (!_regionColors.ContainsKey(s.Label))
             {
@@ -420,22 +401,31 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
             }
             else if (_CurDisplayClusterMode == DisplayClusterMode.MOSAIC)
             {
-                //Vector3 lightPos = Camera.main.transform.position;
+                bool marker = true;
+                float albedo = 0;
+                float Ir = 0;
                 Vector3 lightDir = ImageProcessing.LightDirection(_estimatedLightPos, s.WorldPoint);
-                float albedo = ImageProcessing.ComputeAlbedo(s.Intensity, s.Normal, -lightDir);
-                //Debug.DrawRay(Camera.main.transform.position, -lightDir, Color.cyan);
-
+                
+                if (ImageProcessing.ComputeAlbedo(s.Intensity / 255f, s.Normal, lightDir, out albedo))
+                {
+                    ImageProcessing.ComputeImageIntensity(albedo, s.Normal, lightDir, out Ir);
+                }
+                else
+                {
+                    marker = false;
+                    if (!s.GetMedianSynthesizedIr(_OutTexture.width, _OutTexture.height, _estimatedLightPos, out albedo, out Ir))
+                    {
+                        Ir = 0;
+                    }
+                }
+                
+                
                 foreach (RegionPixel p in s.Pixels)
                 {
                     //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
-
-                    Vector3 n = s.Normal; // Normalize between 0 and 1.
-                    n += Vector3.one;
-                    n /= 2f;
-                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, ImageProcessing.Vector3ToColor(n));
+                    _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(Ir, Ir, Ir));
 
                     _IoTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(s.Intensity / 255f, s.Intensity / 255f, s.Intensity / 255f));
-                    //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(albedo / 255f, albedo / 255f, albedo / 255f));
                 }
             }
             else // Superpixel Mean
@@ -468,8 +458,8 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
 
     private void doCompactWatershed()
     {
-        //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        //Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
 
         pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
@@ -484,7 +474,6 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         {
             s.ComputeImageIntensity();
             s.ComputeSurfaceNormal(_OutTexture.width, _OutTexture.height);
-
         }
 
         if (_debuggingLightPos)
@@ -494,6 +483,15 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                 _debugLightPos.Y - _lightErrorGrid.GetLength(1) / 2f,
                 _debugLightPos.Z - _lightErrorGrid.GetLength(2) / 2f);
             _estimatedLightPos = lightPos;
+
+            float[] Io = new float[superpixels.Count];
+            for (int i = 0; i < superpixels.Count; i++)
+            {
+                Io[i] = superpixels[i].Intensity;
+            }
+
+            float error = IoIrL2Norm(ref superpixels, Io, lightPos);
+            Debug.Log("LightPos: " + lightPos + " error: " + error);
         }
         else
         {
@@ -502,8 +500,8 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
         
 
         //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
-        _DebugDirectionalLight.transform.position = _estimatedLightPos;
-        _DebugDirectionalLight.transform.LookAt(_DebugLightReceiver);
+        _DebugPointLight.transform.position = _estimatedLightPos;
+        _DebugPointLight.transform.LookAt(_DebugLightReceiver);
 
         drawSuperPixels(ref superpixels);
         _ResultMat.mainTexture = _OutTexture;
@@ -513,8 +511,8 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
     private Vector3 _estimatedLightPos = Vector3.zero;
     private void doSLIC()
     {
-        //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+        Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
+        //Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
 
         pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
@@ -538,14 +536,23 @@ public class SuperpixelManager : MonoBehaviour, ITangoVideoOverlay, ITangoLifecy
                 _debugLightPos.Y - _lightErrorGrid.GetLength(1) / 2f,
                 _debugLightPos.Z - _lightErrorGrid.GetLength(2) / 2f);
             _estimatedLightPos = lightPos;
+
+            float[] Io = new float[superpixels.Count];
+            for (int i = 0; i < superpixels.Count; i++)
+            {
+                Io[i] = superpixels[i].Intensity/255f;
+            }
+
+            float error = IoIrL2Norm(ref superpixels, Io, lightPos);
+            Debug.Log("LightPos: " + lightPos + " error: " + error);
         }
         else
         {
             _estimatedLightPos = lightEstimation(ref superpixels);
         }
         //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
-        _DebugDirectionalLight.transform.position = _estimatedLightPos;
-        _DebugDirectionalLight.transform.LookAt(_DebugLightReceiver);
+        _DebugPointLight.transform.position = _estimatedLightPos;
+        _DebugPointLight.transform.LookAt(_DebugLightReceiver);
 
         drawSuperPixels(ref superpixels);
         _ResultMat.mainTexture = _OutTexture;
