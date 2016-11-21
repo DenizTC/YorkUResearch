@@ -40,44 +40,44 @@ public class Superpixel : RegionPixel {
         return ave;
     }
 
-    public float GetMedianNS(int textureWidth, int textureHeight, Vector3 lightPos)
-    {
-        if (Pixels.Count <= 0) return 0;
+    //public float GetMedianNS(int textureWidth, int textureHeight, Vector3 lightPos)
+    //{
+    //    if (Pixels.Count <= 0) return 0;
 
-        int count = 0;
-        int nCount = 0;
-        List<float> NS = new List<float>(Pixels.Count);
-        foreach (RegionPixel r in Pixels)
-        {
-            r.ComputeImageIntensity(); // 255
-            if (!r.ComputeSurfaceNormal(textureWidth, textureHeight))
-            {
-                continue;
-            }
-            nCount++;
+    //    int count = 0;
+    //    int nCount = 0;
+    //    List<float> NS = new List<float>(Pixels.Count);
+    //    foreach (RegionPixel r in Pixels)
+    //    {
+    //        r.ComputeImageIntensity(); // 255
+    //        if (!r.ComputeSurfaceNormal(textureWidth, textureHeight))
+    //        {
+    //            continue;
+    //        }
+    //        nCount++;
 
-            Vector3 lightDir = ImageProcessing.LightDirection(lightPos, r.WorldPoint);
-            float ns = Vector3.Dot(r.Normal, lightDir);
-            float ir = 0;
-            r.ComputeAlbedo(lightPos); // 255
+    //        Vector3 lightDir = ImageProcessing.LightDirection(lightPos, r.WorldPoint);
+    //        float ns = Vector3.Dot(r.Normal, lightDir);
+    //        float ir = 0;
+    //        r.ComputeAlbedo(lightPos); // 255
 
-            if (ns <= 0)
-            {
-                continue;
-            }
-            NS.Add(ns);
+    //        if (ns <= 0)
+    //        {
+    //            continue;
+    //        }
+    //        NS.Add(ns);
 
-            count++;
-        }
-        if (NS.Count <= 0) return 0;
+    //        count++;
+    //    }
+    //    if (NS.Count <= 0) return 0;
 
-        NS.Sort();
+    //    NS.Sort();
 
-        float result = NS[count / 2];
-        //Debug.LogError("Pixels: " + Pixels.Count + " nCount: " + nCount + " Irs count: " + Irs.Count + " index: " + (count / 2));
-        //Debug.Log("Irs: " + result);
-        return result; // 255
-    }
+    //    float result = NS[count / 2];
+    //    //Debug.LogError("Pixels: " + Pixels.Count + " nCount: " + nCount + " Irs count: " + Irs.Count + " index: " + (count / 2));
+    //    //Debug.Log("Irs: " + result);
+    //    return result; // 255
+    //}
 
     public bool GetMedianSynthesizedIr(int textureWidth, int textureHeight, Vector3 lightPos, out float albedo, out float Ir)
     {

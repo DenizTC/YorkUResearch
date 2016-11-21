@@ -4,6 +4,18 @@ using System;
 
 public static class ImageProcessing {
 
+    public static float[,] HSobelKernel = {
+        { -1, 0, 1 },
+        { -2, 0, 2 },
+        { -1, 0, 1 }
+    };
+
+    public static float[,] VSobelKernel = {
+        { -1, -2, -1 },
+        { 0, 0, 0 },
+        { 1, 2, 1 }
+    };
+
     #region Utilities
 
     public static Color RandomColor()
@@ -152,6 +164,80 @@ public static class ImageProcessing {
         return result;
     }
 
+    /// <summary>
+    /// Finds the gradient using a 3x3 sobel operator.
+    /// Source: http://cuda-programming.blogspot.ca/2013/01/sobel-filter-implementation-in-c.html
+    /// </summary>
+    /// <param name="pixels">The pixels array.</param>
+    /// <param name="x">The x coordinate.</param>
+    /// <param name="y">The y coordinate.</param>
+    /// <returns></returns>
+    public static int Sobel(ref Vector3[,] pixels, int x, int y)
+    {
+
+        // Horizontal convolution.
+        float gX = 0f;
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                int xn = x + i - 1;
+                int yn = y + j - 1;
+                try
+                {
+                    gX += ImageProcessing.Grayscale(pixels[xn, yn]) * HSobelKernel[i, j];
+                }
+                catch (Exception)
+                {
+                    Debug.Log("Index error: " + xn + "x" + yn + " - Pixels[] size: " + pixels.GetLength(0) + "x" + pixels.GetLength(1));
+                    throw;
+                }
+
+            }
+        }
+
+        // Vertical convolution.
+        float gY = 0f;
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                int xn = x + i - 1;
+                int yn = y + j - 1;
+                gY += ImageProcessing.Grayscale(pixels[xn, yn]) * VSobelKernel[i, j];
+            }
+        }
+
+        float length = Mathf.Sqrt(Mathf.Pow(gX, 2) + Mathf.Pow(gY, 2));
+        // Normalize between 0-1.
+        length /= 4328.0f;
+        // Normalize between 0-255.
+        length *= 255f;
+
+        return (int)length;
+    }
+
+    /// <summary>
+    /// Applies a sobel filter on the specified pixels array.
+    /// </summary>
+    /// <param name="pixels">The array of non-normalized (0-255) pixels.</param>
+    /// <returns></returns>
+    public static float[,] SobelFilter3x3(ref Vector3[,] pixels, bool normalize = false)
+    {
+
+        float[,] result = new float[pixels.GetLength(0), pixels.GetLength(1)];
+
+        for (int i = 1; i < pixels.GetLength(0) - 1; i++)
+        {
+            for (int j = 1; j < pixels.GetLength(1) - 1; j++)
+            {
+                result[i, j] = Sobel(ref pixels, i, j);
+                if (normalize) result[i, j] /= 255f;
+            }
+        }
+        return result;
+    }
+
     public static float Grayscale(Vector3 rgb)
     {
         float luma = 0.2126f * rgb.x + 0.7152f * rgb.y + 0.0722f * rgb.z;
@@ -171,28 +257,30 @@ public static class ImageProcessing {
     {
         float ns = Vector3.Dot(normal, lightDir);
         //intensity = albedo * Mathf.Min(ns, 0);
-        intensity = Mathf.Min(albedo * ns * lightIntensity, 1f);
+        //intensity = Mathf.Min(albedo * ns * lightIntensity, 1f);
+        intensity = albedo * ns * lightIntensity;
 
         return ns > 0;
     }
 
     public static bool ComputeImageIntensity(float albedo, float ns, out float intensity, float lightIntensity = 1)
     {
-        intensity = Mathf.Min(albedo * ns*lightIntensity, 1f);
+        //intensity = Mathf.Min(albedo * ns*lightIntensity, 1f);
+        intensity = albedo * ns * lightIntensity;
         return ns > 0;
     }
 
-    public static bool ComputeAlbedo(float imageIntensity, Vector3 normal, Vector3 lightDir, out float albedo, float lightIntensity = 1)
+    public static bool ComputeAlbedo(float imageIntensity, Vector3 normal, Vector3 lightDir, out float ns, out float albedo, float lightIntensity = 1)
     {
         //float ns = normal.x * lightDir.x + normal.y*lightDir.y + normal.z*lightDir.z;
-        float ns = Vector3.Dot(normal, lightDir) * lightIntensity;
+        ns = Vector3.Dot(normal, lightDir) * lightIntensity;
         albedo = imageIntensity / ns;
 
-        if (albedo > 1)
-        {
-            albedo = 1;
-            //return false;
-        }
+        //if (albedo > 1)
+        //{
+        //    albedo = 1;
+        //    //return false;
+        //}
 
         return ns > 0;
     }
@@ -202,11 +290,11 @@ public static class ImageProcessing {
         albedo = imageIntensity / ns*lightIntensity;
 
 
-        if (albedo > 1)
-        {
-            albedo = 1;
-            //return false;
-        }
+        //if (albedo > 1)
+        //{
+        //    albedo = 1;
+        //    //return false;
+        //}
 
         return ns > 0;
     }

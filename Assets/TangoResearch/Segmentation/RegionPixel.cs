@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class RegionPixel {
 
@@ -53,11 +54,22 @@ public class RegionPixel {
         return false;
     }
 
-    public bool ComputeAlbedo(Vector3 lightPos)
+    //public bool ComputeAlbedo(Vector3 lightPos)
+    //{
+    //    Vector3 lightDir = ImageProcessing.LightDirection(lightPos, WorldPoint);
+    //    return ImageProcessing.ComputeAlbedo(Intensity/255f, Normal, lightDir, out Albedo);
+    //}
+
+    public static List<RegionPixel> ToRegionPixels(Vector3[,] pixels)
     {
-        Vector3 lightDir = ImageProcessing.LightDirection(lightPos, WorldPoint);
-        return ImageProcessing.ComputeAlbedo(Intensity/255f, Normal, lightDir, out Albedo);
+        List<RegionPixel> rpixels = new List<RegionPixel>(pixels.Length);
+        for (int i = 0; i < pixels.GetLength(0); i++)
+        {
+            for (int j = 0; j < pixels.GetLength(1); j++)
+            {
+                rpixels.Add(new RegionPixel(i, j, pixels[i, j]));
+            }
+        }
+        return rpixels;
     }
-
-
 }
