@@ -10,7 +10,9 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
 {
 
     public enum SuperpixelMethod { SLIC, CWATERSHED, NONE };
+    public enum ScreenMode { MESH3D, ALBEDO, ERROR, RESULT };
     public SuperpixelMethod _CurSuperpixelMethod = SuperpixelMethod.SLIC;
+    public ScreenMode _CurScreenMode = ScreenMode.RESULT;
 
     public Transform _PanelOptionsSLIC;
     public Transform _PanelOptionsWatershed;
@@ -19,6 +21,11 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
     public Toggle _ToggleSLIC;
     public Toggle _ToggleCWatershed;
     public Toggle _ToggleDebugLights;
+
+    public Toggle _ToggleScreenMesh3D;
+    public Toggle _ToggleScreenAlbedo;
+    public Toggle _ToggleScreenError;
+    public Toggle _ToggleScreenResult;
 
     public Slider _SliderClusterCount;
     public Slider _SliderResDiv;
@@ -35,9 +42,10 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
     private TangoApplication _tangoApplication;
 
     public RenderTexture _InTexture;
-    public Texture2D _IoTexture; // Original intensity map. Used for visually comparing Io and Ir (reconstructed intensity) map.
-    public Texture2D _OutTexture;
-    private Texture2D tempTex;
+    public RenderTexture _Mesh3DTexture;
+    public Texture2D _AlbedoTexture;
+    public Texture2D _ErrorTexture;
+    
 
     private TangoUnityImageData _lastImageBuffer = null;
 
@@ -61,13 +69,12 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
     private bool _debuggingLightPos = false;
     private bool _realtime = false;
 
-    private Dictionary<int, Color> _regionColors = new Dictionary<int, Color>();
-
-    public Material _ResultMat;
-    public Material _IoMat;
+    public Camera _Cam3DMesh;
+    //public Material _ResultMat;
+    //public Material _IoMat;
     public Transform _DebugLightOriginal;
     public Transform _DebugPointLight;
-    public Transform _DebugLightReceiver;
+    public RawImage _RawImageScreen;
 
     public void Start()
     {
@@ -75,6 +82,11 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         _ToggleSLIC.onValueChanged.AddListener(value => onValueChangedSuperpixelMethod(value, SuperpixelMethod.SLIC));
         _ToggleCWatershed.onValueChanged.AddListener(value => onValueChangedSuperpixelMethod(value, SuperpixelMethod.CWATERSHED));
         _ToggleDebugLights.onValueChanged.AddListener(value => onValueChangedDebugLights(value));
+
+        _ToggleScreenAlbedo.onValueChanged.AddListener(value => onValueChangedScreenMode(ScreenMode.ALBEDO));
+        _ToggleScreenError.onValueChanged.AddListener(value => onValueChangedScreenMode(ScreenMode.ERROR));
+        _ToggleScreenMesh3D.onValueChanged.AddListener(value => onValueChangedScreenMode(ScreenMode.MESH3D));
+        _ToggleScreenResult.onValueChanged.AddListener(value => onValueChangedScreenMode(ScreenMode.RESULT));
 
         _SliderResDiv.onValueChanged.AddListener(onValueChangedResDiv);
         _SliderClusterCount.onValueChanged.AddListener(onValueChangedClusterCount);
@@ -94,18 +106,13 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
             _tangoApplication.Register(this);
         }
 
-        for (int i = 0; i < _ClusterCount; i++)
-        {
-            _regionColors.Add(i, ImageProcessing.RandomColor());
-        }
+        _AlbedoTexture = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
+        _AlbedoTexture.filterMode = FilterMode.Point;
+        _AlbedoTexture.mipMapBias = 0;
 
-        tempTex = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
-        tempTex.filterMode = FilterMode.Point;
-        tempTex.mipMapBias = 0;
-
-        _IoTexture = new Texture2D(1280 / _ResDiv, 720 / _ResDiv);
-        _IoTexture.filterMode = FilterMode.Point;
-        _IoTexture.mipMapBias = 0;
+        _Cam3DMesh.targetTexture = new RenderTexture((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv), 16, RenderTextureFormat.ARGB32);
+        _Cam3DMesh.targetTexture.filterMode = FilterMode.Bilinear;
+        _Cam3DMesh.targetTexture.mipMapBias = 0;
 
         _Watershed = new WatershedSegmentation();
         _Watershed._ClusterCount = _ClusterCount;
@@ -125,26 +132,23 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
 
     private void onValueChangedDebugLightXo(float value)
     {
-        //float x = _DebugLightOriginal.position.x;
-        float y = _DebugLightOriginal.position.y;
-        float z = _DebugLightOriginal.position.z;
-        _DebugLightOriginal.position = new Vector3(value - _FLA._LightErrorGrid.GetLength(0)/2f,y,z);
+        Vector3 lPos = Camera.main.transform.InverseTransformPoint(_DebugLightOriginal.position);
+        Vector3 pos = Camera.main.transform.TransformPoint(value - _FLA._LightErrorGrid.GetLength(0) / 2f, lPos.y, lPos.z);
+        _DebugLightOriginal.position = pos;
     }
 
     private void onValueChangedDebugLightYo(float value)
     {
-        float x = _DebugLightOriginal.position.x;
-        //float y = _DebugLightOriginal.position.y;
-        float z = _DebugLightOriginal.position.z;
-        _DebugLightOriginal.position = new Vector3(x, value - _FLA._LightErrorGrid.GetLength(1) / 2f, z);
+        Vector3 lPos = Camera.main.transform.InverseTransformPoint(_DebugLightOriginal.position);
+        Vector3 pos = Camera.main.transform.TransformPoint(lPos.x, value - _FLA._LightErrorGrid.GetLength(1) / 2f, lPos.z);
+        _DebugLightOriginal.position = pos;
     }
 
     private void onValueChangedDebugLightZo(float value)
     {
-        float x = _DebugLightOriginal.position.x;
-        float y = _DebugLightOriginal.position.y;
-        //float z = _DebugLightOriginal.position.z;
-        _DebugLightOriginal.position = new Vector3(x,y,value - _FLA._LightErrorGrid.GetLength(1) / 2f);
+        Vector3 lPos = Camera.main.transform.InverseTransformPoint(_DebugLightOriginal.position);
+        Vector3 pos = Camera.main.transform.TransformPoint(lPos.x, lPos.y, value - _FLA._LightErrorGrid.GetLength(2) / 2f);
+        _DebugLightOriginal.position = pos;
     }
 
 
@@ -239,23 +243,42 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         }
     }
 
+    private void onValueChangedScreenMode(ScreenMode screenMode)
+    {
+        _CurScreenMode = screenMode;
+
+        switch (screenMode)
+        {
+            case ScreenMode.MESH3D:
+                break;
+            case ScreenMode.ALBEDO:
+                break;
+            case ScreenMode.ERROR:
+                break;
+            case ScreenMode.RESULT:
+                break;
+            default:
+                break;
+        }
+    }
+
     private void onValueChangedResDiv(float value)
     {
         _ResDiv = (int)(8 - value) + 8;
 
         TangoCameraIntrinsics intrinsics = new TangoCameraIntrinsics();
         VideoOverlayProvider.GetIntrinsics(TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR, intrinsics);
-        _OutTexture = new Texture2D((int)(intrinsics.width / (float)_ResDiv), (int)(intrinsics.height / (float)_ResDiv), TextureFormat.RGBA32, false);
-        _OutTexture.filterMode = FilterMode.Point;
-        _OutTexture.anisoLevel = 0;
+        _ErrorTexture = new Texture2D((int)(intrinsics.width / (float)_ResDiv), (int)(intrinsics.height / (float)_ResDiv), TextureFormat.RGBA32, false);
+        _ErrorTexture.filterMode = FilterMode.Point;
+        _ErrorTexture.anisoLevel = 0;
 
-        tempTex = new Texture2D((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv));
-        tempTex.filterMode = FilterMode.Point;
-        tempTex.mipMapBias = 0;
+        _AlbedoTexture = new Texture2D((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv));
+        _AlbedoTexture.filterMode = FilterMode.Point;
+        _AlbedoTexture.mipMapBias = 0;
 
-        _IoTexture = new Texture2D((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv));
-        _IoTexture.filterMode = FilterMode.Point;
-        _IoTexture.mipMapBias = 0;
+        _Cam3DMesh.targetTexture = new RenderTexture((int)(1280 / (float)_ResDiv), (int)(720 / (float)_ResDiv), 16, RenderTextureFormat.ARGB32);
+        _Cam3DMesh.targetTexture.filterMode = FilterMode.Bilinear;
+        _Cam3DMesh.targetTexture.mipMapBias = 0;
     }
 
     private void onValueChangedClusterCount(float value)
@@ -289,42 +312,54 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
     {
         foreach (Superpixel s in superpixels)
         {
-
-            if (!_regionColors.ContainsKey(s.Label))
-            {
-                _regionColors.Add(s.Label, ImageProcessing.RandomColor());
-            }
-
+            Color oC = new Color();
+            Color iC = new Color();
             float ns = 0;
             float albedo = 0;
             float Ir = 0;
+            float Io = s.Intensity / 255f;
             Vector3 lightDir = ImageProcessing.LightDirection(_FLA._EstimatedLightPos, s.WorldPoint);
 
-            ImageProcessing.ComputeAlbedo(s.Intensity / 255f, s.Normal, lightDir, out ns, out albedo);
+            ImageProcessing.ComputeAlbedo(Io, s.Normal, lightDir, out ns, out albedo);
             if (ns > 0)
             {
-                ImageProcessing.ComputeImageIntensity(albedo, s.Normal, lightDir, out Ir);
+                if (albedo > 2.5)
+                {
+                    oC = Color.red;
+                    iC = Color.red;
+                }
+                else
+                {
+                    ImageProcessing.ComputeImageIntensity(albedo, s.Normal, lightDir, out Ir);
+                    oC = new Color(Ir, Ir, Ir);
+                    iC = new Color(albedo, albedo, albedo);
+                }
             }
             else
             {
-                if (!s.GetMedianSynthesizedIr(_OutTexture.width, _OutTexture.height, _FLA._EstimatedLightPos, out albedo, out Ir))
-                {
-                    Ir = 0;
-                }
+                oC = new Color(Ir, Ir, Ir);
+                iC = Color.cyan;
             }
 
             foreach (RegionPixel p in s.Pixels)
             {
-                //_OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, _regionColors[s.Label]);
-                _OutTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(Ir, Ir, Ir));
+                if (Io - Ir == 0)
+                {
+                    oC = Color.black;
+                }
+                else
+                {
+                    oC = new Color(1, 1, 1);
+                }
 
-                _IoTexture.SetPixel(p.X, _OutTexture.height - p.Y, new Color(s.Intensity / 255f, s.Intensity / 255f, s.Intensity / 255f));
+                _AlbedoTexture.SetPixel(p.X, _ErrorTexture.height - p.Y, iC);
+                _ErrorTexture.SetPixel(p.X, _ErrorTexture.height - p.Y, oC);
             }
 
         }
 
-        _OutTexture.Apply();
-        _IoTexture.Apply();
+        _ErrorTexture.Apply();
+        _AlbedoTexture.Apply();
     }
 
     private void drawRegionPixels(ref List<RegionPixel> rpixels)
@@ -337,9 +372,10 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
             float ns = 0;
             float albedo = 0;
             float Ir = 0;
+            float Io = r.Intensity / 255f;
             Vector3 lightDir = ImageProcessing.LightDirection(_FLA._EstimatedLightPos, r.WorldPoint);
 
-            ImageProcessing.ComputeAlbedo(r.Intensity / 255f, r.Normal, lightDir, out ns, out albedo);
+            ImageProcessing.ComputeAlbedo(Io, r.Normal, lightDir, out ns, out albedo);
             if (ns > 0)
             {
                 if (albedo > 2.5)
@@ -360,19 +396,25 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
                 iC = Color.cyan;
             }
 
-            _IoTexture.SetPixel(r.X, _OutTexture.height - r.Y, iC);
-            _OutTexture.SetPixel(r.X, _OutTexture.height - r.Y, oC);
-        }
+            if (Io - Ir == 0)
+            {
+                oC = Color.black;
+            }
+            else
+            {
+                oC = new Color(1, 1, 1);
+            }
 
-        _OutTexture.Apply();
-        _IoTexture.Apply();
+            _AlbedoTexture.SetPixel(r.X, _ErrorTexture.height - r.Y, iC);
+            _ErrorTexture.SetPixel(r.X, _ErrorTexture.height - r.Y, oC);
+        }
     }
 
 
     private void doCompactWatershed()
     {
         //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_Cam3DMesh.targetTexture);
 
         //pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
@@ -381,7 +423,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         foreach (Superpixel s in superpixels)
         {
             s.ComputeImageIntensity();
-            s.ComputeSurfaceNormal(_OutTexture.width, _OutTexture.height);
+            s.ComputeSurfaceNormal(_ErrorTexture.width, _ErrorTexture.height);
         }
 
         if (_debuggingLightPos)
@@ -389,7 +431,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
             Vector3 lightPos = Camera.main.transform.TransformPoint(
                 _debugLightPos.X - _FLA._LightErrorGrid.GetLength(0) / 2f,
                 _debugLightPos.Y - _FLA._LightErrorGrid.GetLength(1) / 2f,
-                -_debugLightPos.Z);
+                _debugLightPos.Z - _FLA._LightErrorGrid.GetLength(2) / 2f);
             _FLA._EstimatedLightPos = lightPos;
 
             float[] Io = new float[superpixels.Count];
@@ -398,37 +440,37 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
                 Io[i] = superpixels[i].Intensity;
             }
 
-            float error = FindLightAdvanced.IoIrL2Norm(ref superpixels, Io, lightPos, _OutTexture.width, _OutTexture.height);
+            float error = FindLightAdvanced.IoIrL2Norm(ref superpixels, Io, lightPos, _ErrorTexture.width, _ErrorTexture.height);
             Debug.Log("LightPos: " + lightPos + " error: " + error);
         }
         else
         {
-            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref superpixels, _OutTexture.width, _OutTexture.height);
+            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref superpixels, _ErrorTexture.width, _ErrorTexture.height);
         }
 
 
         //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
         _DebugPointLight.transform.position = _FLA._EstimatedLightPos;
-        _DebugPointLight.transform.LookAt(_DebugLightReceiver);
+        //_DebugPointLight.transform.LookAt(_DebugLightReceiver);
 
         drawSuperPixels(ref superpixels);
-        _ResultMat.mainTexture = _OutTexture;
-        _IoMat.mainTexture = _IoTexture;
+        //_ResultMat.mainTexture = _ErrorTexture;
+        //_IoMat.mainTexture = _AlbedoTexture;
     }
 
     private void doSLIC()
     {
         //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_Cam3DMesh.targetTexture);
 
-        pixels = ImageProcessing.MedianFilter3x3(ref pixels);
+        //pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         List<Superpixel> superpixels;
         List<CIELABXYCenter> clusterCenters = _SLIC.RunSLICSegmentation(pixels, out superpixels);
 
         foreach (Superpixel s in superpixels)
         {
             s.ComputeImageIntensity();
-            s.ComputeSurfaceNormal(_OutTexture.width, _OutTexture.height);
+            s.ComputeSurfaceNormal(_ErrorTexture.width, _ErrorTexture.height);
         }
 
         if (_debuggingLightPos)
@@ -436,7 +478,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
             Vector3 lightPos = Camera.main.transform.TransformPoint(
                 _debugLightPos.X - _FLA._LightErrorGrid.GetLength(0) / 2f,
                 _debugLightPos.Y - _FLA._LightErrorGrid.GetLength(1) / 2f,
-                -_debugLightPos.Z);
+                _debugLightPos.Z - _FLA._LightErrorGrid.GetLength(2) / 2f);
             _FLA._EstimatedLightPos = lightPos;
 
             float[] Io = new float[superpixels.Count];
@@ -445,26 +487,25 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
                 Io[i] = superpixels[i].Intensity / 255f;
             }
 
-            float error = FindLightAdvanced.IoIrL2Norm(ref superpixels, Io, lightPos, _OutTexture.width, _OutTexture.height);
+            float error = FindLightAdvanced.IoIrL2Norm(ref superpixels, Io, lightPos, _ErrorTexture.width, _ErrorTexture.height);
             Debug.Log("LightPos: " + lightPos + " error: " + error);
         }
         else
         {
-            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref superpixels, _OutTexture.width, _OutTexture.height);
+            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref superpixels, _ErrorTexture.width, _ErrorTexture.height);
         }
-        //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
         _DebugPointLight.transform.position = _FLA._EstimatedLightPos;
-        _DebugPointLight.transform.LookAt(_DebugLightReceiver);
+        //_DebugPointLight.transform.LookAt(_DebugLightReceiver);
 
         drawSuperPixels(ref superpixels);
-        _ResultMat.mainTexture = _OutTexture;
-        _IoMat.mainTexture = _IoTexture;
+        //_ResultMat.mainTexture = _ErrorTexture;
+        //_IoMat.mainTexture = _AlbedoTexture;
     }
 
     private void doLightEstimation()
     {
         //Vector3[,] pixels = TangoHelpers.ImageBufferToArray(_lastImageBuffer, (uint)_ResDiv, true);
-        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_InTexture);
+        Vector3[,] pixels = ImageProcessing.RenderTextureToRGBArray(_Cam3DMesh.targetTexture);
 
         //pixels = ImageProcessing.MedianFilter3x3(ref pixels);
         //float[,] edges = ImageProcessing.SobelFilter3x3(ref pixels, true);
@@ -473,7 +514,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         foreach (RegionPixel r in rpixels)
         {
             r.ComputeImageIntensity();
-            r.ComputeSurfaceNormal(_OutTexture.width, _OutTexture.height);
+            r.ComputeSurfaceNormal(_ErrorTexture.width, _ErrorTexture.height);
         }
 
         if (_debuggingLightPos)
@@ -482,7 +523,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
             Vector3 lightPos = Camera.main.transform.TransformPoint(
                 _debugLightPos.X - _FLA._LightErrorGrid.GetLength(0) / 2f,
                 _debugLightPos.Y - _FLA._LightErrorGrid.GetLength(1) / 2f,
-                -_debugLightPos.Z);
+                _debugLightPos.Z - _FLA._LightErrorGrid.GetLength(2) / 2f);
 
             _FLA._EstimatedLightPos = lightPos;
 
@@ -492,20 +533,36 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
                 Io[i] = rpixels[i].Intensity / 255f;
             }
 
-            float error = FindLightAdvanced.IoIrL2Norm(ref rpixels, Io, lightPos, _OutTexture.width, _OutTexture.height);
+            float error = FindLightAdvanced.IoIrL2Norm(ref rpixels, Io, lightPos, _ErrorTexture.width, _ErrorTexture.height);
             Debug.Log("LightPos: " + lightPos + " error: " + error);
         }
         else
         {
-            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref rpixels, _OutTexture.width, _OutTexture.height);
+            _FLA._EstimatedLightPos = _FLA.LightEstimation(ref rpixels, _ErrorTexture.width, _ErrorTexture.height);
         }
-        //Debug.DrawRay(_estimatedLightPos, Camera.main.transform.position - _estimatedLightPos, Color.magenta);
         _DebugPointLight.transform.position = _FLA._EstimatedLightPos;
-        _DebugPointLight.transform.LookAt(_DebugLightReceiver);
+        //_DebugPointLight.transform.LookAt(_DebugLightReceiver);
 
         drawRegionPixels(ref rpixels);
-        _ResultMat.mainTexture = _OutTexture;
-        _IoMat.mainTexture = _IoTexture;
+        switch (_CurScreenMode)
+        {
+            case ScreenMode.MESH3D:
+                _RawImageScreen.texture = _Mesh3DTexture;
+                break;
+            case ScreenMode.ALBEDO:
+                _RawImageScreen.texture = _AlbedoTexture;
+                _AlbedoTexture.Apply();
+                break;
+            case ScreenMode.ERROR:
+                _RawImageScreen.texture = _ErrorTexture;
+                _ErrorTexture.Apply();
+                break;
+            case ScreenMode.RESULT:
+                _RawImageScreen.texture = _InTexture;
+                break;
+            default:
+                break;
+        }
     }
 
     private void superpixelSegmentation()
@@ -550,9 +607,9 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
     public void OnTangoPermissions(bool permissionsGranted)
     {
 #if UNITY_EDITOR
-        _OutTexture = new Texture2D(1280 / _ResDiv, 720 / _ResDiv, TextureFormat.ARGB32, false);
-        _OutTexture.filterMode = FilterMode.Point;
-        _OutTexture.anisoLevel = 0;
+        _ErrorTexture = new Texture2D(1280 / _ResDiv, 720 / _ResDiv, TextureFormat.ARGB32, false);
+        _ErrorTexture.filterMode = FilterMode.Point;
+        _ErrorTexture.anisoLevel = 0;
 #else
         TangoCameraIntrinsics intrinsics = new TangoCameraIntrinsics();
         VideoOverlayProvider.GetIntrinsics(TangoEnums.TangoCameraId.TANGO_CAMERA_COLOR, intrinsics);
@@ -561,7 +618,7 @@ public class FindLightAdvManager : MonoBehaviour, ITangoVideoOverlay, ITangoLife
         _OutTexture.anisoLevel = 0;
 #endif
 
-        Debug.Log(_OutTexture.width + "x" + _OutTexture.height);
+        Debug.Log(_ErrorTexture.width + "x" + _ErrorTexture.height);
     }
 
     public void OnTangoServiceConnected()

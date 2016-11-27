@@ -15,6 +15,7 @@ public class FindLightAdvanced : MonoBehaviour {
     public Vector3 LightEstimation(ref List<Superpixel> superpixels, int textureWidth, int textureHeight)
     {
         VectorInt3 minError = new VectorInt3(0, 0, 0);
+        Vector3 minLightPos = Vector3.zero;
         float[] Io = new float[superpixels.Count];
 
         for (int i = 0; i < superpixels.Count; i++)
@@ -30,9 +31,9 @@ public class FindLightAdvanced : MonoBehaviour {
                 {
 
                     Vector3 lightPos = Camera.main.transform.TransformPoint(
-                        x - _LightErrorGrid.GetLength(0) / 2f,
-                        y - _LightErrorGrid.GetLength(1) / 2f,
-                        -z);
+                       x - _LightErrorGrid.GetLength(0) / 2f,
+                       y - _LightErrorGrid.GetLength(1) / 2f,
+                       z - _LightErrorGrid.GetLength(2) / 2f);
 
                     float error = IoIrL2Norm(ref superpixels, Io, lightPos, textureWidth, textureHeight);
                     _LightErrorGrid[x, y, z] = error;
@@ -40,6 +41,7 @@ public class FindLightAdvanced : MonoBehaviour {
                     if (error < _LightErrorGrid[minError.X, minError.Y, minError.Z])
                     {
                         minError = new VectorInt3(x, y, z);
+                        minLightPos = lightPos;
                     }
 
 
@@ -47,18 +49,14 @@ public class FindLightAdvanced : MonoBehaviour {
             }
         }
 
-        Vector3 estimatedLightPos = Camera.main.transform.TransformPoint(
-            minError.X - _LightErrorGrid.GetLength(0) / 2f,
-            minError.Y - _LightErrorGrid.GetLength(1) / 2f,
-            -minError.Z);
-
-        Debug.Log("LightPos: " + estimatedLightPos + " error: " + _LightErrorGrid[minError.X, minError.Y, minError.Z]);
-        return estimatedLightPos;
+        Debug.Log("LightPos: " + minLightPos + " error: " + _LightErrorGrid[minError.X, minError.Y, minError.Z]);
+        return minLightPos;
     }
 
     public Vector3 LightEstimation(ref List<RegionPixel> pixels, int textureWidth, int textureHeight)
     {
         VectorInt3 minError = new VectorInt3(0, 0, 0);
+        Vector3 minLightPos = Vector3.zero;
         float[] Io = new float[pixels.Count];
 
         for (int i = 0; i < pixels.Count; i++)
@@ -76,7 +74,7 @@ public class FindLightAdvanced : MonoBehaviour {
                     Vector3 lightPos = Camera.main.transform.TransformPoint(
                         x - _LightErrorGrid.GetLength(0) / 2f,
                         y - _LightErrorGrid.GetLength(1) / 2f,
-                        -z);
+                        z - _LightErrorGrid.GetLength(2) / 2f);
 
                     float error = IoIrL2Norm(ref pixels, Io, lightPos, textureWidth, textureHeight);
                     _LightErrorGrid[x, y, z] = error;
@@ -84,6 +82,7 @@ public class FindLightAdvanced : MonoBehaviour {
                     if (error < _LightErrorGrid[minError.X, minError.Y, minError.Z])
                     {
                         minError = new VectorInt3(x, y, z);
+                        minLightPos = lightPos;
                     }
 
 
@@ -91,14 +90,8 @@ public class FindLightAdvanced : MonoBehaviour {
             }
         }
 
-        Vector3 estimatedLightPos = Camera.main.transform.TransformPoint(
-            minError.X - _LightErrorGrid.GetLength(0) / 2f,
-            minError.Y - _LightErrorGrid.GetLength(1) / 2f,
-            -minError.Z);
-
-
-        Debug.Log("LightPos: " + estimatedLightPos + " error: " + _LightErrorGrid[minError.X, minError.Y, minError.Z]);
-        return estimatedLightPos;
+        Debug.Log("LightPos: " + minLightPos + " error: " + _LightErrorGrid[minError.X, minError.Y, minError.Z]);
+        return minLightPos;
     }
 
 
@@ -127,7 +120,7 @@ public class FindLightAdvanced : MonoBehaviour {
             {
                 if (!superpixels[i].GetMedianSynthesizedIr(textureWidth, textureHeight, lightPos, out albedo, out ir))
                 {
-                    ir = 0;
+                    ir = Io[i];
                 }
             }
 
