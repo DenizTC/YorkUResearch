@@ -49,6 +49,80 @@ public static class ImageProcessing {
         return c;
     }
 
+    public static Vector3[,] CubemapFaceToRGBArray(Cubemap cubeMap, CubemapFace face)
+    {
+        Vector3[,] c = new Vector3[cubeMap.width, cubeMap.height];
+
+        for (int i = 0; i < cubeMap.width; i++)
+        {
+            for (int j = 0; j < cubeMap.height; j++)
+            {
+                c[i, j] = ColorToVector3(cubeMap.GetPixel(face, i, j)) * 255;
+            }
+        }
+
+        return c;
+    }
+
+    public static Color[] CubemapFaceToColorArray(Cubemap cubeMap, CubemapFace face)
+    {
+        Color[] c = cubeMap.GetPixels(face);
+        return c;
+    }
+
+    public static Color[,] CubemapFaceTo2DColorArray(Cubemap cubeMap, CubemapFace face)
+    {
+        Color[] c = cubeMap.GetPixels(face);
+
+        Color[,] c2 = new Color[cubeMap.width, cubeMap.height];
+        for (int i = 0; i < cubeMap.width; i++)
+        {
+            for (int j = 0; j < cubeMap.height; j++)
+            {
+                c2[i, j] = c[j * cubeMap.width + i];
+            }
+        }
+
+        return c2;
+    }
+
+    public static Vector3[,] CubemapFaceTo2DVector3Array(Cubemap cubeMap, CubemapFace face)
+    {
+        Color[] c = cubeMap.GetPixels(face);
+
+        Vector3[,] c2 = new Vector3[cubeMap.width, cubeMap.height];
+        for (int i = 0; i < cubeMap.width; i++)
+        {
+            for (int j = 0; j < cubeMap.height; j++)
+            {
+                c2[i, j] = ColorToVector3( c[j * cubeMap.width + i] );
+            }
+        }
+
+        return c2;
+    }
+
+    public static Vector2 BrightestPoint(Color[,] c)
+    {
+        Vector2 p = Vector3.zero;
+
+        float max = 0;
+        for (int i = 0; i < c.GetLength(0); i++)
+        {
+            for (int j = 0; j < c.GetLength(1); j++)
+            {
+                float cur = Grayscale(c[i,j]);
+                if(cur > max)
+                {
+                    max = cur;
+                    p = new Vector2(i, j);
+                }
+            }
+        }
+
+        return p;
+    }
+
     #endregion
 
     #region Converters
@@ -241,6 +315,12 @@ public static class ImageProcessing {
     public static float Grayscale(Vector3 rgb)
     {
         float luma = 0.2126f * rgb.x + 0.7152f * rgb.y + 0.0722f * rgb.z;
+        return luma;
+    }
+
+    public static float Grayscale(Color rgb)
+    {
+        float luma = 0.2126f * rgb.r + 0.7152f * rgb.g + 0.0722f * rgb.b;
         return luma;
     }
 
